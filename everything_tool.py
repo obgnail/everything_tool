@@ -69,11 +69,28 @@ default_flags = (
 
 class EverythingTool:
     def __init__(self, dll_path='./dll/Everything64.dll'):
-        self.everything_dll_path = dll_path
+        self.dll_path = dll_path
         self.process_name = 'Everything.exe'
 
+        self.audio_ext = ('aac;ac3;aif;aifc;aiff;au;cda;dts;fla;flac;it;m1a;m2a;m3u;m4a;mid;midi;'
+                          'mka;mod;mp2;mp3;mpa;ogg;ra;rmi;spc;rmi;snd;umx;voc;wav;wma;xm')
+        self.compressed_ext = ('7z;ace;arj;bz2;cab;gz;gzip;jar;r00;r01;r02;r03;r04;r05;r06;r07;r08;'
+                               'r09;r10;r11;r12;r13;r14;r15;r16;r17;r18;r19;r20;r21;r22;r23;r24;'
+                               'r25;r26;r27;r28;r29;rar;tar;tgz;z;zip')
+        self.doc_ext = ('ahk;ass;asm;c;cfg;chm;cpp;css;csv;cxx;doc;docm;docx;dot;dotm;dotx;go;h;hpp;'
+                        'htm;html;hxx;ini;java;json;js;log;lua;lrc;md;mdb;mht;mhtml;odt;pdf;potx;potm;'
+                        'ppam;ppsm;ppsx;pps;ppt;pptm;pptx;py;rtf;sh;sldm;sldx;sql;thmx;toml;txt;vsd;'
+                        'vtt;wpd;wps;wri;xlam;xls;xlsb;xlsm;xlsx;xltm;xltx;xml;yml;yaml')
+        self.exe_ext = 'bat;cmd;exe;msi;msp;scr'
+        self.pic_ext = 'ani;bmp;gif;ico;jpe;jpeg;jpg;pcx;png;psd;svg;tga;tif;tiff;webp;wmf'
+        self.video_ext = ('3g2;3gp;3gp2;3gpp;amr;amv;asf;avi;bdmv;bik;d2v;divx;drc;dsa;dsm;dss;dsv;'
+                          'evo;f4v;flc;fli;flic;flv;hdmov;ifo;ivf;m1v;m2p;m2t;m2ts;m2v;m4b;m4p;m4v;'
+                          'mkv;mp2v;mp4;mp4v;mpe;mpeg;mpg;mpls;mpv2;mpv4;mov;mts;ogm;ogv;pss;pva;'
+                          'qt;ram;ratdvd;rm;rmm;rmvb;roq;rpm;smil;smk;swf;tp;tpr;ts;vob;vp6;webm;'
+                          'wm;wmp;wmv')
+
     def __enter__(self):
-        self.dll = ctypes.WinDLL(self.everything_dll_path)  # dll imports
+        self.dll = ctypes.WinDLL(self.dll_path)  # dll imports
 
         if not self.check_running():
             return None
@@ -195,52 +212,41 @@ class EverythingTool:
                 'modified_date': self.__get_time(date_modified_filetime),
             }
 
-    def search_audio(self, keywords='', **kwargs):
-        """搜索音频文件"""
-        return self.search(
-            f'ext:aac;ac3;aif;aifc;aiff;au;cda;dts;fla;flac;it;m1a;m2a;m3u;m4a;mid;midi;mka;mod;mp2;mp3;mpa;'
-            f'ogg;ra;rmi;spc;rmi;snd;umx;voc;wav;wma;xm {keywords}', **kwargs)
-
-    def search_compressed(self, keywords='', **kwargs):
-        """搜索压缩文件"""
-        return self.search(
-            f'ext:7z;ace;arj;bz2;cab;gz;gzip;jar;r00;r01;r02;r03;r04;r05;r06;r07;r08;r09;r10;r11;r12;r13;r14;'
-            f'r15;r16;r17;r18;r19;r20;r21;r22;r23;r24;r25;r26;r27;r28;r29;rar;tar;tgz;z;zip {keywords}', **kwargs)
-
-    def search_doc(self, keywords='', **kwargs):
-        """搜索文档"""
-        return self.search(
-            f'ext:c;chm;cpp;csv;cxx;doc;docm;docx;dot;dotm;dotx;h;hpp;htm;html;hxx;ini;java;lua;mht;mhtml;'
-            f'odt;pdf;potx;potm;ppam;ppsm;ppsx;pps;ppt;pptm;pptx;rtf;sldm;sldx;thmx;txt;vsd;wpd;wps;wri;'
-            f'xlam;xls;xlsb;xlsm;xlsx;xltm;xltx;xml {keywords}', **kwargs)
-
-    def search_exe(self, keywords='', **kwargs):
-        """搜索可执行文件"""
-        return self.search(f'ext:bat;cmd;exe;msi;msp;scr {keywords}', **kwargs)
+    def search_in_located(self, path, keywords='', **kwargs):
+        """搜索路径下文件"""
+        return self.search(f'{path} {keywords}', **kwargs)
 
     def search_folder(self, keywords='', **kwargs):
         """搜索文件夹"""
         return self.search(f'folder: {keywords}', **kwargs)
 
-    def search_pic(self, keywords='', **kwargs):
-        """搜索图片"""
-        return self.search(f'ext:ani;bmp;gif;ico;jpe;jpeg;jpg;pcx;png;psd;tga;tif;tiff;webp;wmf {keywords}', **kwargs)
-
-    def search_video(self, keywords='', **kwargs):
-        """搜索视频"""
-        return self.search(
-            f'ext:3g2;3gp;3gp2;3gpp;amr;amv;asf;avi;bdmv;bik;d2v;divx;drc;dsa;dsm;dss;dsv;evo;f4v;flc;fli;'
-            f'flic;flv;hdmov;ifo;ivf;m1v;m2p;m2t;m2ts;m2v;m4b;m4p;m4v;mkv;mp2v;mp4;mp4v;mpe;mpeg;mpg;mpls;'
-            f'mpv2;mpv4;mov;mts;ogm;ogv;pss;pva;qt;ram;ratdvd;rm;rmm;rmvb;roq;rpm;smil;smk;swf;tp;tpr;ts;'
-            f'vob;vp6;webm;wm;wmp;wmv {keywords}', **kwargs)
-
     def search_ext(self, ext, keywords='', **kwargs):
         """搜索扩展名称"""
         return self.search(f'ext:{ext} {keywords}', **kwargs)
 
-    def search_in_located(self, path, keywords='', **kwargs):
-        """搜索路径下文件"""
-        return self.search(f'{path} {keywords}', **kwargs)
+    def search_audio(self, keywords='', **kwargs):
+        """搜索音频文件"""
+        return self.search_ext(f'{self.audio_ext} {keywords}', **kwargs)
+
+    def search_compressed(self, keywords='', **kwargs):
+        """搜索压缩文件"""
+        return self.search_ext(f'{self.compressed_ext} {keywords}', **kwargs)
+
+    def search_doc(self, keywords='', **kwargs):
+        """搜索文档"""
+        return self.search_ext(f'{self.doc_ext} {keywords}', **kwargs)
+
+    def search_exe(self, keywords='', **kwargs):
+        """搜索可执行文件"""
+        return self.search_ext(f'{self.exe_ext} {keywords}', **kwargs)
+
+    def search_pic(self, keywords='', **kwargs):
+        """搜索图片"""
+        return self.search_ext(f'{self.pic_ext} {keywords}', **kwargs)
+
+    def search_video(self, keywords='', **kwargs):
+        """搜索视频"""
+        return self.search_ext(f'{self.video_ext} {keywords}', **kwargs)
 
     def exit(self):
         """退出everything"""
