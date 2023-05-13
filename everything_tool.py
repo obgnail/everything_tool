@@ -75,16 +75,10 @@ class EverythingTool:
     def __enter__(self):
         self.dll = ctypes.WinDLL(self.everything_dll_path)  # dll imports
 
-        running = self.check_running()
-        if not running:
+        if not self.check_running():
             return None
 
-        self.dll.Everything_GetResultDateCreated.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
-        self.dll.Everything_GetResultDateModified.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
-        self.dll.Everything_GetResultSize.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
-        self.dll.Everything_GetResultFileNameW.argtypes = [ctypes.c_int]
-        self.dll.Everything_GetResultFileNameW.restype = ctypes.c_wchar_p
-        self.dll.Everything_GetResultExtensionW.restype = ctypes.c_wchar_p
+        self.__define_ctypes()
 
         return self
 
@@ -101,7 +95,7 @@ class EverythingTool:
         return datetime.datetime.fromtimestamp(microsecs)
 
     @staticmethod
-    def __file_type(is_file, is_folder, is_volume):
+    def __get_file_type(is_file, is_folder, is_volume):
         if is_file == 1:
             return 'file'
         elif is_folder == 1:
@@ -122,6 +116,14 @@ class EverythingTool:
         build_number = self.dll.Everything_GetBuildNumber()
         version_string = f'{major_version}.{minor_version}.{revision}.{build_number}'
         return version_string
+
+    def __define_ctypes(self):
+        self.dll.Everything_GetResultDateCreated.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
+        self.dll.Everything_GetResultDateModified.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
+        self.dll.Everything_GetResultSize.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
+        self.dll.Everything_GetResultExtensionW.restype = ctypes.c_wchar_p
+        self.dll.Everything_GetResultFileNameW.argtypes = [ctypes.c_int]
+        self.dll.Everything_GetResultFileNameW.restype = ctypes.c_wchar_p
 
     def __setup_search(self, keyword, math_path, math_case, whole_world, regex, offset, limit, sort_type):
         self.dll.Everything_Reset()  # 重置状态
@@ -179,16 +181,16 @@ class EverythingTool:
             self.dll.Everything_GetResultDateModified(i, date_modified_filetime)
             self.dll.Everything_GetResultSize(i, file_size)
 
-            ext = self.dll.Everything_GetResultExtensionW(i)
+            extension = self.dll.Everything_GetResultExtensionW(i)
             is_file = self.dll.Everything_IsFileResult(i)
             is_folder = self.dll.Everything_IsFolderResult(i)
             is_volume = self.dll.Everything_IsVolumeResult(i)
 
             yield {
                 'name': ctypes.wstring_at(filename),
-                'type': self.__file_type(is_file, is_folder, is_volume),
+                'type': self.__get_file_type(is_file, is_folder, is_volume),
                 'size': file_size.value,
-                'ext': ext,
+                'extension': extension,
                 'created_date': self.__get_time(date_created_time),
                 'modified_date': self.__get_time(date_modified_filetime),
             }
