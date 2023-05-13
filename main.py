@@ -1,13 +1,16 @@
 import everything
 
 if __name__ == '__main__':
-    # version = everything.version()
-    # print(version)
+    with everything.EverythingTool() as tool:
+        if not tool:
+            print('everything is not running')
+        else:
+            version = tool.version()
+            print(version)
 
-    result = everything.search("RJ*")
-    a = list(result)
-    print(a)
+            result = tool.search("RJ*")
+            print(len(list(result)))
 
-    # result = everything.search_audio("RJ*")
-    # a = list(result)
-    # print(a)
+            result = tool.search_audio("RJ*")
+            for i in result:
+                print(i)
