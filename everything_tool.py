@@ -1,6 +1,7 @@
 import ctypes
 import datetime
 import struct
+import win32api
 
 # defines
 EVERYTHING_REQUEST_FILE_NAME = 0x00000001
@@ -56,6 +57,15 @@ POSIX_EPOCH = datetime.datetime.strptime('1970-01-01 00:00:00', '%Y-%m-%d %H:%M:
 EPOCH_DIFF = (POSIX_EPOCH - WINDOWS_EPOCH).total_seconds()  # 11644473600.0
 WINDOWS_TICKS_TO_POSIX_EPOCH = EPOCH_DIFF * WINDOWS_TICKS  # 116444736000000000.0
 
+default_flags = (
+        EVERYTHING_REQUEST_FILE_NAME |
+        EVERYTHING_REQUEST_PATH |
+        EVERYTHING_REQUEST_SIZE |
+        EVERYTHING_REQUEST_DATE_CREATED |
+        EVERYTHING_REQUEST_DATE_MODIFIED |
+        EVERYTHING_REQUEST_EXTENSION
+)
+
 
 class EverythingTool:
     def __init__(self, dll_path='./dll/Everything64.dll'):
@@ -79,8 +89,7 @@ class EverythingTool:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
-        # self.dll.FreeLibrary()
+        win32api.FreeLibrary(self.dll._handle)
 
     @staticmethod
     def __get_time(filetime):
@@ -114,6 +123,24 @@ class EverythingTool:
         version_string = f'{major_version}.{minor_version}.{revision}.{build_number}'
         return version_string
 
+    def __setup_search(self, keyword, math_path, math_case, whole_world, regex, offset, limit, sort_type):
+        self.dll.Everything_Reset()  # 重置状态
+        self.dll.Everything_SetMatchPath(math_path)
+        self.dll.Everything_SetMatchCase(math_case)
+        self.dll.Everything_SetMatchWholeWord(whole_world)
+        self.dll.Everything_SetRegex(regex)
+        self.dll.Everything_SetOffset(offset)
+        self.dll.Everything_SetSort(sort_type)
+        self.dll.Everything_SetSearchW(keyword)
+        self.dll.Everything_SetRequestFlags(default_flags)
+        if limit > 0:
+            self.dll.Everything_SetMax(limit)
+
+    def __execute_search(self):
+        self.dll.Everything_QueryW(1)  # execute the query
+        num_results = self.dll.Everything_GetNumResults()  # get the number of results
+        return num_results
+
     def search(
             self,
             keyword,
@@ -137,35 +164,10 @@ class EverythingTool:
         :param sort_type: 排序
         :return:
         """
-        # setup search
-        self.dll.Everything_Reset()  # 重置状态
-        self.dll.Everything_SetMatchPath(math_path)
-        self.dll.Everything_SetMatchCase(math_case)
-        self.dll.Everything_SetMatchWholeWord(whole_world)
-        self.dll.Everything_SetRegex(regex)
-        self.dll.Everything_SetOffset(offset)
-        self.dll.Everything_SetSort(sort_type)
 
-        if limit > 0:
-            self.dll.Everything_SetMax(limit)
+        self.__setup_search(keyword, math_path, math_case, whole_world, regex, offset, limit, sort_type)
+        num_results = self.__execute_search()
 
-        self.dll.Everything_SetSearchW(keyword)
-        self.dll.Everything_SetRequestFlags(
-            EVERYTHING_REQUEST_FILE_NAME |
-            EVERYTHING_REQUEST_PATH |
-            EVERYTHING_REQUEST_SIZE |
-            EVERYTHING_REQUEST_DATE_CREATED |
-            EVERYTHING_REQUEST_DATE_MODIFIED |
-            EVERYTHING_REQUEST_EXTENSION
-        )
-
-        # execute the query
-        self.dll.Everything_QueryW(1)
-
-        # get the number of results
-        num_results = self.dll.Everything_GetNumResults()
-
-        # create buffers
         filename = ctypes.create_unicode_buffer(260)
         date_created_time = ctypes.c_ulonglong(1)
         date_modified_filetime = ctypes.c_ulonglong(1)
@@ -191,52 +193,52 @@ class EverythingTool:
                 'modified_date': self.__get_time(date_modified_filetime),
             }
 
-    def search_audio(self, keywords=''):
+    def search_audio(self, keywords='', **kwargs):
         """搜索音频文件"""
         return self.search(
             f'ext:aac;ac3;aif;aifc;aiff;au;cda;dts;fla;flac;it;m1a;m2a;m3u;m4a;mid;midi;mka;mod;mp2;mp3;mpa;'
-            f'ogg;ra;rmi;spc;rmi;snd;umx;voc;wav;wma;xm {keywords}')
+            f'ogg;ra;rmi;spc;rmi;snd;umx;voc;wav;wma;xm {keywords}', **kwargs)
 
-    def search_compressed(self, keywords=''):
+    def search_compressed(self, keywords='', **kwargs):
         """搜索压缩文件"""
         return self.search(
             f'ext:7z;ace;arj;bz2;cab;gz;gzip;jar;r00;r01;r02;r03;r04;r05;r06;r07;r08;r09;r10;r11;r12;r13;r14;'
-            f'r15;r16;r17;r18;r19;r20;r21;r22;r23;r24;r25;r26;r27;r28;r29;rar;tar;tgz;z;zip {keywords}')
+            f'r15;r16;r17;r18;r19;r20;r21;r22;r23;r24;r25;r26;r27;r28;r29;rar;tar;tgz;z;zip {keywords}', **kwargs)
 
-    def search_doc(self, keywords=''):
+    def search_doc(self, keywords='', **kwargs):
         """搜索文档"""
         return self.search(
             f'ext:c;chm;cpp;csv;cxx;doc;docm;docx;dot;dotm;dotx;h;hpp;htm;html;hxx;ini;java;lua;mht;mhtml;'
             f'odt;pdf;potx;potm;ppam;ppsm;ppsx;pps;ppt;pptm;pptx;rtf;sldm;sldx;thmx;txt;vsd;wpd;wps;wri;'
-            f'xlam;xls;xlsb;xlsm;xlsx;xltm;xltx;xml {keywords}')
+            f'xlam;xls;xlsb;xlsm;xlsx;xltm;xltx;xml {keywords}', **kwargs)
 
-    def search_exe(self, keywords=''):
+    def search_exe(self, keywords='', **kwargs):
         """搜索可执行文件"""
-        return self.search(f'ext:bat;cmd;exe;msi;msp;scr {keywords}')
+        return self.search(f'ext:bat;cmd;exe;msi;msp;scr {keywords}', **kwargs)
 
-    def search_folder(self, keywords=''):
+    def search_folder(self, keywords='', **kwargs):
         """搜索文件夹"""
-        return self.search(f'folder: {keywords}')
+        return self.search(f'folder: {keywords}', **kwargs)
 
-    def search_pic(self, keywords=''):
+    def search_pic(self, keywords='', **kwargs):
         """搜索图片"""
-        return self.search(f'ext:ani;bmp;gif;ico;jpe;jpeg;jpg;pcx;png;psd;tga;tif;tiff;webp;wmf {keywords}')
+        return self.search(f'ext:ani;bmp;gif;ico;jpe;jpeg;jpg;pcx;png;psd;tga;tif;tiff;webp;wmf {keywords}', **kwargs)
 
-    def search_video(self, keywords=''):
+    def search_video(self, keywords='', **kwargs):
         """搜索视频"""
         return self.search(
             f'ext:3g2;3gp;3gp2;3gpp;amr;amv;asf;avi;bdmv;bik;d2v;divx;drc;dsa;dsm;dss;dsv;evo;f4v;flc;fli;'
             f'flic;flv;hdmov;ifo;ivf;m1v;m2p;m2t;m2ts;m2v;m4b;m4p;m4v;mkv;mp2v;mp4;mp4v;mpe;mpeg;mpg;mpls;'
             f'mpv2;mpv4;mov;mts;ogm;ogv;pss;pva;qt;ram;ratdvd;rm;rmm;rmvb;roq;rpm;smil;smk;swf;tp;tpr;ts;'
-            f'vob;vp6;webm;wm;wmp;wmv {keywords}')
+            f'vob;vp6;webm;wm;wmp;wmv {keywords}', **kwargs)
 
-    def search_ext(self, ext, keywords=''):
+    def search_ext(self, ext, keywords='', **kwargs):
         """搜索扩展名称"""
-        return self.search(f'ext:{ext} {keywords}')
+        return self.search(f'ext:{ext} {keywords}', **kwargs)
 
-    def search_in_located(self, path, keywords=''):
+    def search_in_located(self, path, keywords='', **kwargs):
         """搜索路径下文件"""
-        return self.search(f'{path} {keywords}')
+        return self.search(f'{path} {keywords}', **kwargs)
 
     def exit(self):
         """退出everything"""
