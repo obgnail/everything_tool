@@ -8,8 +8,8 @@ if __name__ == '__main__':
             version = tool.version()
             print(version)
 
-            result = tool.search("RJ*")
-            print(len(list(result)))
+            # result = tool.search("RJ*")
+            # print(len(list(result)))
 
             result = tool.search_audio("RJ*")
             for i in result:

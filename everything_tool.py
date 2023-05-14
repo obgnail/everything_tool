@@ -63,6 +63,7 @@ default_flags = (
         EVERYTHING_REQUEST_SIZE |
         EVERYTHING_REQUEST_DATE_CREATED |
         EVERYTHING_REQUEST_DATE_MODIFIED |
+        EVERYTHING_REQUEST_DATE_ACCESSED |
         EVERYTHING_REQUEST_EXTENSION
 )
 
@@ -137,6 +138,7 @@ class EverythingTool:
     def __define_ctypes(self):
         self.dll.Everything_GetResultDateCreated.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
         self.dll.Everything_GetResultDateModified.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
+        self.dll.Everything_GetResultDateAccessed.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
         self.dll.Everything_GetResultSize.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
         self.dll.Everything_GetResultExtensionW.restype = ctypes.c_wchar_p
         self.dll.Everything_GetResultFileNameW.argtypes = [ctypes.c_int]
@@ -188,6 +190,7 @@ class EverythingTool:
         num_results = self.__execute_search()
 
         filename = ctypes.create_unicode_buffer(260)
+        date_accessed_time = ctypes.c_ulonglong(1)
         date_created_time = ctypes.c_ulonglong(1)
         date_modified_filetime = ctypes.c_ulonglong(1)
         file_size = ctypes.c_ulonglong(1)
@@ -196,6 +199,7 @@ class EverythingTool:
             self.dll.Everything_GetResultFullPathNameW(i, filename, 260)
             self.dll.Everything_GetResultDateCreated(i, date_created_time)
             self.dll.Everything_GetResultDateModified(i, date_modified_filetime)
+            self.dll.Everything_GetResultDateAccessed(i, date_accessed_time)
             self.dll.Everything_GetResultSize(i, file_size)
 
             extension = self.dll.Everything_GetResultExtensionW(i)
@@ -208,6 +212,7 @@ class EverythingTool:
                 'type': self.__get_file_type(is_file, is_folder, is_volume),
                 'size': file_size.value,
                 'extension': extension,
+                'accessed_date': self.__get_time(date_accessed_time),
                 'created_date': self.__get_time(date_created_time),
                 'modified_date': self.__get_time(date_modified_filetime),
             }
