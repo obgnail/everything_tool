@@ -4,22 +4,38 @@ import struct
 import win32api
 
 # defines
-EVERYTHING_REQUEST_FILE_NAME = 0x00000001  # ✓
-EVERYTHING_REQUEST_PATH = 0x00000002  # ✓
+EVERYTHING_REQUEST_FILE_NAME = 0x00000001
+EVERYTHING_REQUEST_PATH = 0x00000002
 EVERYTHING_REQUEST_FULL_PATH_AND_FILE_NAME = 0x00000004
-EVERYTHING_REQUEST_EXTENSION = 0x00000008  # ✓
-EVERYTHING_REQUEST_SIZE = 0x00000010  # ✓
-EVERYTHING_REQUEST_DATE_CREATED = 0x00000020  # ✓
-EVERYTHING_REQUEST_DATE_MODIFIED = 0x00000040  # ✓
-EVERYTHING_REQUEST_DATE_ACCESSED = 0x00000080  # ✓
+EVERYTHING_REQUEST_EXTENSION = 0x00000008
+EVERYTHING_REQUEST_SIZE = 0x00000010
+EVERYTHING_REQUEST_DATE_CREATED = 0x00000020
+EVERYTHING_REQUEST_DATE_MODIFIED = 0x00000040
+EVERYTHING_REQUEST_DATE_ACCESSED = 0x00000080
 EVERYTHING_REQUEST_ATTRIBUTES = 0x00000100
-EVERYTHING_REQUEST_FILE_LIST_FILE_NAME = 0x00000200  # ✓
-EVERYTHING_REQUEST_RUN_COUNT = 0x00000400  # ✓
-EVERYTHING_REQUEST_DATE_RUN = 0x00000800  # ✓
-EVERYTHING_REQUEST_DATE_RECENTLY_CHANGED = 0x00001000  # ✓
-EVERYTHING_REQUEST_HIGHLIGHTED_FILE_NAME = 0x00002000  # ✓
-EVERYTHING_REQUEST_HIGHLIGHTED_PATH = 0x00004000  # ✓
-EVERYTHING_REQUEST_HIGHLIGHTED_FULL_PATH_AND_FILE_NAME = 0x00008000  # ✓
+EVERYTHING_REQUEST_FILE_LIST_FILE_NAME = 0x00000200
+EVERYTHING_REQUEST_RUN_COUNT = 0x00000400
+EVERYTHING_REQUEST_DATE_RUN = 0x00000800
+EVERYTHING_REQUEST_DATE_RECENTLY_CHANGED = 0x00001000
+EVERYTHING_REQUEST_HIGHLIGHTED_FILE_NAME = 0x00002000
+EVERYTHING_REQUEST_HIGHLIGHTED_PATH = 0x00004000
+EVERYTHING_REQUEST_HIGHLIGHTED_FULL_PATH_AND_FILE_NAME = 0x00008000
+
+# 属性
+EVERYTHING_FILE_ATTRIBUTE_READONLY = 0x00000001
+EVERYTHING_FILE_ATTRIBUTE_HIDDEN = 0x00000002
+EVERYTHING_FILE_ATTRIBUTE_SYSTEM = 0x00000004
+EVERYTHING_FILE_ATTRIBUTE_DIRECTORY = 0x00000010
+EVERYTHING_FILE_ATTRIBUTE_ARCHIVE = 0x00000020
+EVERYTHING_FILE_ATTRIBUTE_DEVICE = 0x00000040
+EVERYTHING_FILE_ATTRIBUTE_NORMAL = 0x00000080
+EVERYTHING_FILE_ATTRIBUTE_TEMPORARY = 0x00000100
+EVERYTHING_FILE_ATTRIBUTE_SPARSE_FILE = 0x00000200
+EVERYTHING_FILE_ATTRIBUTE_REPARSE_POINT = 0x00000400
+EVERYTHING_FILE_ATTRIBUTE_COMPRESSED = 0x00000800
+EVERYTHING_FILE_ATTRIBUTE_OFFLINE = 0x00001000
+EVERYTHING_FILE_ATTRIBUTE_NOT_CONTENT_INDEXED = 0x00002000
+EVERYTHING_FILE_ATTRIBUTE_ENCRYPTED = 0x00004000
 
 # 排序状态映射
 EVERYTHING_SORT_NAME_ASCENDING = 1
@@ -49,13 +65,32 @@ EVERYTHING_SORT_DATE_ACCESSED_DESCENDING = 24
 EVERYTHING_SORT_DATE_RUN_ASCENDING = 25
 EVERYTHING_SORT_DATE_RUN_DESCENDING = 26
 
-# convert a windows FILETIME to a python datetime
-# https://stackoverflow.com/questions/39481221/convert-datetime-back-to-windows-64-bit-filetime
-WINDOWS_TICKS = int(1 / 10 ** -7)  # 10,000,000 (100 nanoseconds or .1 microseconds)
-WINDOWS_EPOCH = datetime.datetime.strptime('1601-01-01 00:00:00', '%Y-%m-%d %H:%M:%S')
-POSIX_EPOCH = datetime.datetime.strptime('1970-01-01 00:00:00', '%Y-%m-%d %H:%M:%S')
-EPOCH_DIFF = (POSIX_EPOCH - WINDOWS_EPOCH).total_seconds()  # 11644473600.0
-WINDOWS_TICKS_TO_POSIX_EPOCH = EPOCH_DIFF * WINDOWS_TICKS  # 116444736000000000.0
+# return values from Everything_GetLastError
+EVERYTHING_OK = 0  # no error
+EVERYTHING_ERROR_MEMORY = 1  # out of memory
+EVERYTHING_ERROR_IPC = 2  # IPC not available
+EVERYTHING_ERROR_REGISTERCLASSEX = 3  # RegisterClassEx failed
+EVERYTHING_ERROR_CREATEWINDOW = 4  # CreateWindow failed
+EVERYTHING_ERROR_CREATETHREAD = 5  # CreateThread failed
+EVERYTHING_ERROR_INVALIDINDEX = 6  # Invalid result index (must be >= 0 and < numResults)
+EVERYTHING_ERROR_INVALIDCALL = 7  # Call Everything_Query before getting results
+
+ATTRIBUTES = (
+    (EVERYTHING_FILE_ATTRIBUTE_ENCRYPTED, 'E'),
+    (EVERYTHING_FILE_ATTRIBUTE_NOT_CONTENT_INDEXED, 'I'),
+    (EVERYTHING_FILE_ATTRIBUTE_OFFLINE, 'O'),
+    (EVERYTHING_FILE_ATTRIBUTE_COMPRESSED, 'C'),
+    (EVERYTHING_FILE_ATTRIBUTE_REPARSE_POINT, 'L'),
+    (EVERYTHING_FILE_ATTRIBUTE_SPARSE_FILE, 'P'),
+    (EVERYTHING_FILE_ATTRIBUTE_TEMPORARY, 'T'),
+    (EVERYTHING_FILE_ATTRIBUTE_NORMAL, 'N'),
+    (EVERYTHING_FILE_ATTRIBUTE_DEVICE, 'D'),
+    (EVERYTHING_FILE_ATTRIBUTE_ARCHIVE, 'A'),
+    (EVERYTHING_FILE_ATTRIBUTE_DIRECTORY, 'D'),
+    (EVERYTHING_FILE_ATTRIBUTE_SYSTEM, 'S'),
+    (EVERYTHING_FILE_ATTRIBUTE_HIDDEN, 'H'),
+    (EVERYTHING_FILE_ATTRIBUTE_READONLY, 'R'),
+)
 
 default_flags = (
         EVERYTHING_REQUEST_FILE_NAME
@@ -72,7 +107,16 @@ default_flags = (
         | EVERYTHING_REQUEST_FILE_LIST_FILE_NAME
         | EVERYTHING_REQUEST_DATE_RECENTLY_CHANGED
         | EVERYTHING_REQUEST_DATE_RUN
+        | EVERYTHING_REQUEST_ATTRIBUTES
 )
+
+# convert a windows FILETIME to a python datetime
+# https://stackoverflow.com/questions/39481221/convert-datetime-back-to-windows-64-bit-filetime
+WINDOWS_TICKS = int(1 / 10 ** -7)  # 10,000,000 (100 nanoseconds or .1 microseconds)
+WINDOWS_EPOCH = datetime.datetime.strptime('1601-01-01 00:00:00', '%Y-%m-%d %H:%M:%S')
+POSIX_EPOCH = datetime.datetime.strptime('1970-01-01 00:00:00', '%Y-%m-%d %H:%M:%S')
+EPOCH_DIFF = (POSIX_EPOCH - WINDOWS_EPOCH).total_seconds()  # 11644473600.0
+WINDOWS_TICKS_TO_POSIX_EPOCH = EPOCH_DIFF * WINDOWS_TICKS  # 116444736000000000.0
 
 
 class EverythingTool:
@@ -118,6 +162,27 @@ class EverythingTool:
             return None
         microsecs = (winticks - WINDOWS_TICKS_TO_POSIX_EPOCH) / WINDOWS_TICKS
         return datetime.datetime.fromtimestamp(microsecs)
+
+    @staticmethod
+    def __get_attribute(attr):
+        num = struct.unpack('<Q', attr)[0]
+
+        temp = num
+        attr_name = ''
+        i = 0
+        while i <= len(ATTRIBUTES) - 1 or temp != 0:
+            value, name = ATTRIBUTES[i]
+            if temp >= value:
+                temp -= value
+                attr_name += name
+            else:
+                i += 1
+
+        if temp != 0:
+            raise f"error attr: {num}"
+
+        attr_name = attr_name[::-1]
+        return attr_name
 
     @staticmethod
     def __get_file_type(is_file, is_folder, is_volume):
@@ -174,6 +239,9 @@ class EverythingTool:
         self.dll.Everything_GetResultDateRecentlyChanged.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
 
         self.dll.Everything_GetResultDateRun.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
+
+        self.dll.Everything_GetResultAttributes.argtypes = [ctypes.c_int]
+        self.dll.Everything_GetResultAttributes.restype = ctypes.POINTER(ctypes.c_ulonglong)
 
     def __setup_search(self, keyword, math_path, math_case, whole_world, regex, offset, limit, sort_type):
         self.dll.Everything_Reset()  # 重置状态
@@ -242,6 +310,7 @@ class EverythingTool:
             is_folder = self.dll.Everything_IsFolderResult(i)
             is_volume = self.dll.Everything_IsVolumeResult(i)
             extension = self.dll.Everything_GetResultExtensionW(i)
+            attr = self.dll.Everything_GetResultAttributes(i)
             run_count = self.dll.Everything_GetResultRunCount(i)  # returns 0 if unavailable
             result_file_list_file_name = self.dll.Everything_GetResultFileListFileNameW(i)
             highlight_name = self.dll.Everything_GetResultHighlightedFileNameW(i)
@@ -249,20 +318,21 @@ class EverythingTool:
             highlight_name_path = self.dll.Everything_GetResultHighlightedFullPathAndFileNameW(i)
 
             yield {
-                'name': ctypes.wstring_at(name),
+                # 'name': ctypes.wstring_at(name),
                 # 'type': self.__get_file_type(is_file, is_folder, is_volume),
                 # 'size': size.value,
                 # 'extension': extension,
-                'run_count': run_count,
+                # 'run_count': run_count,
+                'attribute': self.__get_attribute(attr),
                 # 'file_list_file_name': result_file_list_file_name,
                 # 'accessed_time': self.__get_time(time_accessed),
                 # 'created_time': self.__get_time(time_created),
                 # 'modified_time': self.__get_time(time_modified),
                 # 'recently_changed': self.__get_time(recently_changed),
-                'date_run': self.__get_time(date_run),
-                'highlighted_name': highlight_name,
-                'highlighted_path': highlight_path,
-                'highlighted_name_path': highlight_name_path,
+                # 'date_run': self.__get_time(date_run),
+                # 'highlighted_name': highlight_name,
+                # 'highlighted_path': highlight_path,
+                # 'highlighted_name_path': highlight_name_path,
             }
 
     def search_in_located(self, path, keywords='', **kwargs):
