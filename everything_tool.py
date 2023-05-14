@@ -58,14 +58,16 @@ EPOCH_DIFF = (POSIX_EPOCH - WINDOWS_EPOCH).total_seconds()  # 11644473600.0
 WINDOWS_TICKS_TO_POSIX_EPOCH = EPOCH_DIFF * WINDOWS_TICKS  # 116444736000000000.0
 
 default_flags = (
-        EVERYTHING_REQUEST_FILE_NAME |
-        EVERYTHING_REQUEST_PATH |
-        EVERYTHING_REQUEST_SIZE |
-        EVERYTHING_REQUEST_DATE_CREATED |
-        EVERYTHING_REQUEST_DATE_MODIFIED |
-        EVERYTHING_REQUEST_DATE_ACCESSED |
-        EVERYTHING_REQUEST_EXTENSION |
-        EVERYTHING_REQUEST_HIGHLIGHTED_FILE_NAME
+        EVERYTHING_REQUEST_FILE_NAME
+        | EVERYTHING_REQUEST_PATH
+        | EVERYTHING_REQUEST_SIZE
+        | EVERYTHING_REQUEST_DATE_CREATED
+        | EVERYTHING_REQUEST_DATE_MODIFIED
+        | EVERYTHING_REQUEST_DATE_ACCESSED
+        | EVERYTHING_REQUEST_EXTENSION
+        | EVERYTHING_REQUEST_HIGHLIGHTED_FILE_NAME
+        | EVERYTHING_REQUEST_HIGHLIGHTED_PATH
+        | EVERYTHING_REQUEST_HIGHLIGHTED_FULL_PATH_AND_FILE_NAME
 )
 
 
@@ -146,6 +148,10 @@ class EverythingTool:
         self.dll.Everything_GetResultFileNameW.restype = ctypes.c_wchar_p
         self.dll.Everything_GetResultHighlightedFileNameW.argtypes = [ctypes.c_int]
         self.dll.Everything_GetResultHighlightedFileNameW.restype = ctypes.c_wchar_p
+        self.dll.Everything_GetResultHighlightedPathW.argtypes = [ctypes.c_int]
+        self.dll.Everything_GetResultHighlightedPathW.restype = ctypes.c_wchar_p
+        self.dll.Everything_GetResultHighlightedFullPathAndFileNameW.argtypes = [ctypes.c_int]
+        self.dll.Everything_GetResultHighlightedFullPathAndFileNameW.restype = ctypes.c_wchar_p
 
     def __setup_search(self, keyword, math_path, math_case, whole_world, regex, offset, limit, sort_type):
         self.dll.Everything_Reset()  # 重置状态
@@ -153,10 +159,10 @@ class EverythingTool:
         self.dll.Everything_SetMatchCase(math_case)
         self.dll.Everything_SetMatchWholeWord(whole_world)
         self.dll.Everything_SetRegex(regex)
-        self.dll.Everything_SetOffset(offset)
         self.dll.Everything_SetSort(sort_type)
         self.dll.Everything_SetSearchW(keyword)
         self.dll.Everything_SetRequestFlags(default_flags)
+        self.dll.Everything_SetOffset(offset)
         if limit > 0:
             self.dll.Everything_SetMax(limit)
 
@@ -189,37 +195,42 @@ class EverythingTool:
         :return:
         """
 
+        # create buffers
+        name = ctypes.create_unicode_buffer(260)
+        size = ctypes.c_ulonglong(1)
+        time_accessed = ctypes.c_ulonglong(1)
+        time_created = ctypes.c_ulonglong(1)
+        time_modified = ctypes.c_ulonglong(1)
+
         self.__setup_search(keyword, math_path, math_case, whole_world, regex, offset, limit, sort_type)
         num_results = self.__execute_search()
 
-        filename = ctypes.create_unicode_buffer(260)
-        date_accessed_time = ctypes.c_ulonglong(1)
-        date_created_time = ctypes.c_ulonglong(1)
-        date_modified_filetime = ctypes.c_ulonglong(1)
-        file_size = ctypes.c_ulonglong(1)
-
         for i in range(num_results):
-            self.dll.Everything_GetResultFullPathNameW(i, filename, 260)
-            self.dll.Everything_GetResultDateCreated(i, date_created_time)
-            self.dll.Everything_GetResultDateModified(i, date_modified_filetime)
-            self.dll.Everything_GetResultDateAccessed(i, date_accessed_time)
-            self.dll.Everything_GetResultSize(i, file_size)
+            self.dll.Everything_GetResultFullPathNameW(i, name, 260)
+            self.dll.Everything_GetResultSize(i, size)
+            self.dll.Everything_GetResultDateAccessed(i, time_accessed)
+            self.dll.Everything_GetResultDateCreated(i, time_created)
+            self.dll.Everything_GetResultDateModified(i, time_modified)
 
             extension = self.dll.Everything_GetResultExtensionW(i)
             is_file = self.dll.Everything_IsFileResult(i)
             is_folder = self.dll.Everything_IsFolderResult(i)
             is_volume = self.dll.Everything_IsVolumeResult(i)
-            highlight_filename = self.dll.Everything_GetResultHighlightedFileNameW(i)
+            highlight_name = self.dll.Everything_GetResultHighlightedFileNameW(i)
+            highlight_path = self.dll.Everything_GetResultHighlightedPathW(i)
+            highlight_name_path = self.dll.Everything_GetResultHighlightedFullPathAndFileNameW(i)
 
             yield {
-                'highlight_filename': highlight_filename,
-                'name': ctypes.wstring_at(filename),
+                'name': ctypes.wstring_at(name),
                 'type': self.__get_file_type(is_file, is_folder, is_volume),
-                'size': file_size.value,
+                'size': size.value,
                 'extension': extension,
-                'accessed_date': self.__get_time(date_accessed_time),
-                'created_date': self.__get_time(date_created_time),
-                'modified_date': self.__get_time(date_modified_filetime),
+                'accessed_time': self.__get_time(time_accessed),
+                'created_time': self.__get_time(time_created),
+                'modified_time': self.__get_time(time_modified),
+                'highlighted_name': highlight_name,
+                'highlighted_path': highlight_path,
+                'highlighted_name_path': highlight_name_path,
             }
 
     def search_in_located(self, path, keywords='', **kwargs):
