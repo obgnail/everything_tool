@@ -1,8 +1,16 @@
+"""
+The Everything SDK provides a DLL and Lib interface to Everything over IPC.
+Everything is required to run in the background.
+
+documentation   : https://www.voidtools.com/support/everything/sdk/
+dependency (SDK): https://www.voidtools.com/Everything-SDK.zip
+"""
 import ctypes
 import datetime
 import struct
 import win32api
 from functools import reduce
+from typing import List, Iterable, Dict
 
 # defines flag
 EVERYTHING_REQUEST_FILE_NAME = 0x00000001  # 文件名
@@ -114,13 +122,13 @@ SUPPORTED_FLAGS = (
     EVERYTHING_REQUEST_FILE_NAME
 )
 
-DEFAULT_FLAGS = (
+DEFAULT_FLAGS: int = (
         EVERYTHING_REQUEST_FULL_PATH_AND_FILE_NAME
         | EVERYTHING_REQUEST_SIZE
         | EVERYTHING_REQUEST_DATE_MODIFIED
 )
 
-ALL_FLAGS = reduce(lambda x, y: x | y, SUPPORTED_FLAGS)
+ALL_FLAGS: int = reduce(lambda x, y: x | y, SUPPORTED_FLAGS)
 
 # convert a windows FILETIME to a python datetime
 # https://stackoverflow.com/questions/39481221/convert-datetime-back-to-windows-64-bit-filetime
@@ -144,9 +152,10 @@ class EverythingTool:
     def __init__(self, dll_path='./dll/Everything64.dll'):
         self.dll_path = dll_path
         self.process_name = 'Everything.exe'
-        self.error = ''
-        self.buffer = None
-        self.flag_func_map = None
+        self.dll = None
+        self.error: [EverythingError, None] = None
+        self.buffers: Dict = {}
+        self.flag_func_map: Dict = {}
 
         self.audio_ext = ('aac;ac3;aif;aifc;aiff;au;cda;dts;fla;flac;it;m1a;m2a;m3u;m4a;mid;midi;'
                           'mka;mod;mp2;mp3;mpa;ogg;ra;rmi;spc;rmi;snd;umx;voc;wav;wma;xm')
@@ -169,8 +178,7 @@ class EverythingTool:
         self.dll = ctypes.WinDLL(self.dll_path)  # dll imports
 
         if not self.check_running():
-            print(f'Fatal Error: {self.error}')
-            return None
+            raise self.error
 
         self.__create_buffers()
         self.__define_ctypes()
@@ -182,7 +190,7 @@ class EverythingTool:
         win32api.FreeLibrary(self.dll._handle)
 
     @staticmethod
-    def __get_time(filetime):
+    def __get_time(filetime) -> [datetime.datetime, None]:
         """Convert windows filetime winticks to python datetime.datetime."""
         winticks = struct.unpack('<Q', filetime)[0]
         if winticks == 18446744073709551615:
@@ -191,7 +199,7 @@ class EverythingTool:
         return datetime.datetime.fromtimestamp(microsecs)
 
     @staticmethod
-    def __get_selected_flags(flags):
+    def __get_selected_flags(flags: int) -> List[int]:
         temp = flags
         selected_flags = []
         for i in range(0, len(SUPPORTED_FLAGS)):
@@ -208,7 +216,7 @@ class EverythingTool:
 
         return selected_flags
 
-    def check_running(self):
+    def check_running(self) -> bool:
         _ = self.version()
         err = self.get_last_error()
         if err is not None:
@@ -217,7 +225,7 @@ class EverythingTool:
 
         return True
 
-    def version(self):
+    def version(self) -> str:
         major_version = self.dll.Everything_GetMajorVersion()
         minor_version = self.dll.Everything_GetMinorVersion()
         revision = self.dll.Everything_GetRevision()
@@ -225,7 +233,7 @@ class EverythingTool:
         version_string = f'{major_version}.{minor_version}.{revision}.{build_number}'
         return version_string
 
-    def get_last_error(self):
+    def get_last_error(self) -> [EverythingError, None]:
         error = self.dll.Everything_GetLastError()
         if error == EVERYTHING_OK:
             return None
@@ -245,10 +253,11 @@ class EverythingTool:
             error_info = "Call Everything_Query before getting results"
         else:
             error_info = 'unknownError'
+
         return EverythingError(error_info)
 
-    def __create_buffers(self):
-        buffer = {
+    def __create_buffers(self) -> None:
+        buffers = {
             'full_path': ctypes.create_unicode_buffer(260),
             'size': ctypes.c_ulonglong(1),
             'accessed_time': ctypes.c_ulonglong(1),
@@ -257,9 +266,9 @@ class EverythingTool:
             'recently_changed': ctypes.c_ulonglong(1),
             'date_run': ctypes.c_ulonglong(1),
         }
-        self.buffer = buffer
+        self.buffers = buffers
 
-    def __create_flag_map(self):
+    def __create_flag_map(self) -> None:
         key_list = ('highlighted_full_path', 'highlighted_path', 'highlighted_name', 'recently_changed',
                     'date_run', 'run_count', 'file_list_file_name', 'attributes',
                     'accessed_time', 'modified_time', 'created_time', 'size',
@@ -277,7 +286,7 @@ class EverythingTool:
         d = {flag: (key, func) for flag, key, func in zip(SUPPORTED_FLAGS, key_list, func_list)}
         self.flag_func_map = d
 
-    def __define_ctypes(self):
+    def __define_ctypes(self) -> None:
         self.dll.Everything_GetResultDateCreated.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
 
         self.dll.Everything_GetResultDateModified.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
@@ -316,7 +325,8 @@ class EverythingTool:
         self.dll.Everything_GetResultAttributes.argtypes = [ctypes.c_int]
         self.dll.Everything_GetResultAttributes.restype = ctypes.POINTER(ctypes.c_ulonglong)
 
-    def __setup_search(self, keyword, math_path, math_case, whole_world, regex, offset, limit, flags, sort_type):
+    def __setup_search(self, keyword, math_path, math_case, whole_world,
+                       regex, offset, limit, flags, sort_type) -> None:
         self.dll.Everything_Reset()  # 重置状态
         self.dll.Everything_SetMatchPath(math_path)
         self.dll.Everything_SetMatchCase(math_case)
@@ -329,20 +339,20 @@ class EverythingTool:
         if limit > 0:
             self.dll.Everything_SetMax(limit)
 
-    def __get_flag_name(self, idx):
+    def __get_flag_name(self, idx) -> str:
         name = self.dll.Everything_GetResultFileNameW(idx)
         return name
 
-    def __get_flag_path(self, idx):
+    def __get_flag_path(self, idx) -> str:
         file_path = self.dll.Everything_GetResultPathW(idx)
         return file_path
 
-    def __get_flag_full_path(self, idx):
-        name = self.buffer['full_path']
+    def __get_flag_full_path(self, idx) -> str:
+        name = self.buffers['full_path']
         self.dll.Everything_GetResultFullPathNameW(idx, name, 260)
         return ctypes.wstring_at(name)
 
-    def __get_flag_type(self, idx):
+    def __get_flag_type(self, idx) -> str:
         if self.dll.Everything_IsFileResult(idx) == 1:
             return 'file'
         elif self.dll.Everything_IsFolderResult(idx) == 1:
@@ -351,20 +361,20 @@ class EverythingTool:
             return 'volume'
         return 'unknown'
 
-    def __get_flag_size(self, idx):
-        size = self.buffer['size']
+    def __get_flag_size(self, idx) -> int:
+        size = self.buffers['size']
         self.dll.Everything_GetResultSize(idx, size)
         return size.value
 
-    def __get_flag_extension(self, idx):
+    def __get_flag_extension(self, idx) -> str:
         ext = self.dll.Everything_GetResultExtensionW(idx)
         return ext
 
-    def __get_flag_run_count(self, idx):
+    def __get_flag_run_count(self, idx) -> int:
         run_count = self.dll.Everything_GetResultRunCount(idx)  # returns 0 if unavailable
         return run_count
 
-    def __get_flag_attributes(self, idx):
+    def __get_flag_attributes(self, idx) -> str:
         attr = self.dll.Everything_GetResultAttributes(idx)
         num = struct.unpack('<Q', attr)[0]
 
@@ -385,64 +395,64 @@ class EverythingTool:
         attr_name = attr_name[::-1]
         return attr_name
 
-    def __get_flag_file_list_file_name(self, idx):
+    def __get_flag_file_list_file_name(self, idx) -> str:
         result_file_list_file_name = self.dll.Everything_GetResultFileListFileNameW(idx)
         return result_file_list_file_name
 
-    def __get_flag_accessed_time(self, idx):
-        time_accessed = self.buffer['accessed_time']
+    def __get_flag_accessed_time(self, idx) -> datetime.datetime:
+        time_accessed = self.buffers['accessed_time']
         self.dll.Everything_GetResultDateAccessed(idx, time_accessed)
         return self.__get_time(time_accessed)
 
-    def __get_flag_created_time(self, idx):
-        time_created = self.buffer['created_time']
+    def __get_flag_created_time(self, idx) -> datetime.datetime:
+        time_created = self.buffers['created_time']
         self.dll.Everything_GetResultDateCreated(idx, time_created)
         return self.__get_time(time_created)
 
-    def __get_flag_modified_time(self, idx):
-        modified_time = self.buffer['modified_time']
+    def __get_flag_modified_time(self, idx) -> datetime.datetime:
+        modified_time = self.buffers['modified_time']
         self.dll.Everything_GetResultDateModified(idx, modified_time)
         return self.__get_time(modified_time)
 
-    def __get_flag_recently_changed(self, idx):
-        recently_changed = self.buffer['recently_changed']
+    def __get_flag_recently_changed(self, idx) -> datetime.datetime:
+        recently_changed = self.buffers['recently_changed']
         self.dll.Everything_GetResultDateRecentlyChanged(idx, recently_changed)
         return self.__get_time(recently_changed)
 
-    def __get_flag_date_run(self, idx):
-        date_run = self.buffer['date_run']
+    def __get_flag_date_run(self, idx) -> datetime.datetime:
+        date_run = self.buffers['date_run']
         self.dll.Everything_GetResultDateRun(idx, date_run)
         return self.__get_time(date_run)
 
-    def __get_flag_highlighted_name(self, idx):
+    def __get_flag_highlighted_name(self, idx) -> str:
         highlight_name = self.dll.Everything_GetResultHighlightedFileNameW(idx)
         return highlight_name
 
-    def __get_flag_highlighted_path(self, idx):
+    def __get_flag_highlighted_path(self, idx) -> str:
         highlight_path = self.dll.Everything_GetResultHighlightedPathW(idx)
         return highlight_path
 
-    def __get_flag_highlighted_full_path(self, idx):
+    def __get_flag_highlighted_full_path(self, idx) -> str:
         highlight_name_path = self.dll.Everything_GetResultHighlightedFullPathAndFileNameW(idx)
         return highlight_name_path
 
-    def __execute_search(self):
+    def __execute_search(self) -> int:
         self.dll.Everything_QueryW(1)  # execute the query
         num_results = self.dll.Everything_GetNumResults()  # get the number of results
         return num_results
 
     def search(
             self,
-            keyword,
-            math_path=False,
-            math_case=False,
-            whole_world=False,
-            regex=False,
-            offset=0,
-            limit=-1,
-            flags=DEFAULT_FLAGS,
-            sort_type=EVERYTHING_SORT_NAME_ASCENDING
-    ):
+            keyword: str,
+            math_path: bool = False,
+            math_case: bool = False,
+            whole_world: bool = False,
+            regex: bool = False,
+            offset: int = 0,
+            limit: int = -1,
+            flags: int = DEFAULT_FLAGS,
+            sort_type: int = EVERYTHING_SORT_NAME_ASCENDING
+    ) -> Iterable[Dict]:
         """
         everything搜索文件
         :param keyword: 搜索关键字,支持通配符
@@ -505,19 +515,17 @@ class EverythingTool:
         """搜索视频"""
         return self.search_ext(f'{self.video_ext} {keywords}', **kwargs)
 
-    def exit(self):
+    def exit(self) -> None:
         """退出everything"""
         self.dll.Everything_Exit()
 
 
 if __name__ == '__main__':
-    with EverythingTool() as tool:
-        if not tool:
-            print('everything is not running')
-        else:
-            print("version:", tool.version())
+    try:
+        with EverythingTool() as tool:
+            print("version:\t", tool.version())
 
             result = tool.search("*.zip")
-            print("*.zip:", len(list(result)))
-
-    print('-- done --')
+            print("*.zip:\t", len(list(result)))
+    except (AttributeError, EverythingError) as e:
+        print(e)

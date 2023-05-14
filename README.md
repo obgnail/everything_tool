@@ -1,35 +1,36 @@
 # Everything Tool
 
-Everything SDK for python。
-
-## 运行环境
-
-本项目使用 everything IPC 通讯，需要[下载](https://www.voidtools.com/zh-cn/downloads/)完整版的 everything 软件。精讲版的 everything 不支持 IPC。
+Everything SDK for python. Everything is required to run in the background.
 
 
 
-## Demo
+## 环境
+
+本项目使用 IPC 与 everything 通讯，需要[下载](https://www.voidtools.com/zh-cn/downloads/)完整版的 everything 软件，精讲版的 everything 不支持 IPC。
+
+
+
+## 示例
 
 ```python
 import everything_tool
 
 if __name__ == '__main__':
-    with everything_tool.EverythingTool() as tool:
-        if not tool:
-            print('everything is not running')
-        else:
+    try:
+        with everything_tool.EverythingTool() as tool:
             version = tool.version()
             print(f'version: {version}')
 
-            for file in tool.search(".zip", limit=3):
+            for file in tool.search(".zipfs", limit=2):
                 print(file)
 
             flags = (everything_tool.EVERYTHING_REQUEST_FILE_NAME
                      | everything_tool.EVERYTHING_REQUEST_ATTRIBUTES)
             for file in tool.search_audio('aaa', math_case=True, flags=flags):
                 print(file)
+    except (AttributeError, everything_tool.EverythingError) as e:
+        print('error:', e)
 
-# {'modified_time': datetime.datetime(2019, 12, 7, 17, 31, 7, 336120), 'size': 18446744073709551615, 'full_path': 'C:\\Windows\\WinSxS\\amd64_system.io.compression.zipfile_b77a5c561934e089_4.0.15805.0_none_f6cd5d82d8d3e7bd'}
 # {'modified_time': datetime.datetime(2022, 11, 19, 16, 41, 41, 568549), 'size': 18446744073709551615, 'full_path': 'D:\\Java\\legal\\jdk.zipfs'}
 # {'modified_time': datetime.datetime(2021, 11, 4, 2, 43, 3, 485258), 'size': 18446744073709551615, 'full_path': 'D:\\software\\CLion 2021.2.3\\jbr\\legal\\jdk.zipfs'}
 
@@ -62,18 +63,18 @@ Everything Tool 支持所有 everything 语法，通过 everything 的帮助获�
 ```python
 def search(
         self,
-        keyword,
-        math_path=False,
-        math_case=False,
-        whole_world=False,
-        regex=False,
-        offset=0,
-        limit=-1,
-        flags=DEFAULT_FLAGS,
-        sort_type=EVERYTHING_SORT_NAME_ASCENDING
-):
+        keyword: str,
+        math_path: bool = False,
+        math_case: bool = False,
+        whole_world: bool = False,
+        regex: bool = False,
+        offset: int = 0,
+        limit: int = -1,
+        flags: int = DEFAULT_FLAGS,
+        sort_type: int = EVERYTHING_SORT_NAME_ASCENDING
+) -> Iterable[Dict]:
     """
-    everything搜索文件
+    everything 搜索文件
     :param keyword: 搜索关键字,支持通配符
     :param math_path: 匹配路径
     :param math_case: 区分大小写
@@ -151,9 +152,7 @@ EVERYTHING_REQUEST_HIGHLIGHTED_PATH = 0x00004000  # 不含文件的路径(高亮
 EVERYTHING_REQUEST_HIGHLIGHTED_FULL_PATH_AND_FILE_NAME = 0x00008000  # 包含文件名的路径(高亮关键字)
 ```
 
-
-
-## 默认查询的字段
+默认查询的字段：
 
 ```python
 DEFAULT_FLAGS = (
@@ -165,7 +164,7 @@ DEFAULT_FLAGS = (
 
 
 
-## 文件属性
+## 支持查询的文件属性
 
 ```python
 # see more: https://learn.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants
@@ -187,7 +186,7 @@ EVERYTHING_FILE_ATTRIBUTE_ENCRYPTED = 0x00004000
 
 
 
-## 排序
+## 支持的排序
 
 ```python
 EVERYTHING_SORT_NAME_ASCENDING = 1 # default value
