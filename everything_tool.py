@@ -15,8 +15,8 @@ EVERYTHING_REQUEST_DATE_ACCESSED = 0x00000080  # ✓
 EVERYTHING_REQUEST_ATTRIBUTES = 0x00000100
 EVERYTHING_REQUEST_FILE_LIST_FILE_NAME = 0x00000200  # ✓
 EVERYTHING_REQUEST_RUN_COUNT = 0x00000400  # ✓
-EVERYTHING_REQUEST_DATE_RUN = 0x00000800
-EVERYTHING_REQUEST_DATE_RECENTLY_CHANGED = 0x00001000
+EVERYTHING_REQUEST_DATE_RUN = 0x00000800  # ✓
+EVERYTHING_REQUEST_DATE_RECENTLY_CHANGED = 0x00001000  # ✓
 EVERYTHING_REQUEST_HIGHLIGHTED_FILE_NAME = 0x00002000  # ✓
 EVERYTHING_REQUEST_HIGHLIGHTED_PATH = 0x00004000  # ✓
 EVERYTHING_REQUEST_HIGHLIGHTED_FULL_PATH_AND_FILE_NAME = 0x00008000  # ✓
@@ -70,6 +70,8 @@ default_flags = (
         | EVERYTHING_REQUEST_HIGHLIGHTED_PATH
         | EVERYTHING_REQUEST_HIGHLIGHTED_FULL_PATH_AND_FILE_NAME
         | EVERYTHING_REQUEST_FILE_LIST_FILE_NAME
+        | EVERYTHING_REQUEST_DATE_RECENTLY_CHANGED
+        | EVERYTHING_REQUEST_DATE_RUN
 )
 
 
@@ -169,6 +171,10 @@ class EverythingTool:
         self.dll.Everything_GetResultFileListFileNameW.argtypes = [ctypes.c_int]
         self.dll.Everything_GetResultFileListFileNameW.restype = ctypes.c_wchar_p
 
+        self.dll.Everything_GetResultDateRecentlyChanged.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
+
+        self.dll.Everything_GetResultDateRun.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
+
     def __setup_search(self, keyword, math_path, math_case, whole_world, regex, offset, limit, sort_type):
         self.dll.Everything_Reset()  # 重置状态
         self.dll.Everything_SetMatchPath(math_path)
@@ -217,6 +223,8 @@ class EverythingTool:
         time_accessed = ctypes.c_ulonglong(1)
         time_created = ctypes.c_ulonglong(1)
         time_modified = ctypes.c_ulonglong(1)
+        recently_changed = ctypes.c_ulonglong(1)
+        date_run = ctypes.c_ulonglong(1)
 
         self.__setup_search(keyword, math_path, math_case, whole_world, regex, offset, limit, sort_type)
         num_results = self.__execute_search()
@@ -227,6 +235,8 @@ class EverythingTool:
             self.dll.Everything_GetResultDateAccessed(i, time_accessed)
             self.dll.Everything_GetResultDateCreated(i, time_created)
             self.dll.Everything_GetResultDateModified(i, time_modified)
+            self.dll.Everything_GetResultDateRecentlyChanged(i, recently_changed)
+            self.dll.Everything_GetResultDateRun(i, date_run)
 
             is_file = self.dll.Everything_IsFileResult(i)
             is_folder = self.dll.Everything_IsFolderResult(i)
@@ -240,14 +250,16 @@ class EverythingTool:
 
             yield {
                 'name': ctypes.wstring_at(name),
-                'type': self.__get_file_type(is_file, is_folder, is_volume),
-                'size': size.value,
-                'extension': extension,
+                # 'type': self.__get_file_type(is_file, is_folder, is_volume),
+                # 'size': size.value,
+                # 'extension': extension,
                 'run_count': run_count,
-                'file_list_file_name': result_file_list_file_name,
-                'accessed_time': self.__get_time(time_accessed),
-                'created_time': self.__get_time(time_created),
-                'modified_time': self.__get_time(time_modified),
+                # 'file_list_file_name': result_file_list_file_name,
+                # 'accessed_time': self.__get_time(time_accessed),
+                # 'created_time': self.__get_time(time_created),
+                # 'modified_time': self.__get_time(time_modified),
+                # 'recently_changed': self.__get_time(recently_changed),
+                'date_run': self.__get_time(date_run),
                 'highlighted_name': highlight_name,
                 'highlighted_path': highlight_path,
                 'highlighted_name_path': highlight_name_path,
