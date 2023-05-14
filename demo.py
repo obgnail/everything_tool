@@ -6,11 +6,8 @@ if __name__ == '__main__':
             print('everything is not running')
         else:
             version = tool.version()
-            print(version)
+            print(f'version: {version}')
 
-            # result = tool.search("RJ*")
-            # print(len(list(result)))
-
-            result = tool.search("zure")
+            result = tool.search("RJ*.zip")
             for i in result:
                 print(i)
