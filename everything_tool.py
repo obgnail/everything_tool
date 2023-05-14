@@ -64,7 +64,8 @@ default_flags = (
         EVERYTHING_REQUEST_DATE_CREATED |
         EVERYTHING_REQUEST_DATE_MODIFIED |
         EVERYTHING_REQUEST_DATE_ACCESSED |
-        EVERYTHING_REQUEST_EXTENSION
+        EVERYTHING_REQUEST_EXTENSION |
+        EVERYTHING_REQUEST_HIGHLIGHTED_FILE_NAME
 )
 
 
@@ -143,6 +144,8 @@ class EverythingTool:
         self.dll.Everything_GetResultExtensionW.restype = ctypes.c_wchar_p
         self.dll.Everything_GetResultFileNameW.argtypes = [ctypes.c_int]
         self.dll.Everything_GetResultFileNameW.restype = ctypes.c_wchar_p
+        self.dll.Everything_GetResultHighlightedFileNameW.argtypes = [ctypes.c_int]
+        self.dll.Everything_GetResultHighlightedFileNameW.restype = ctypes.c_wchar_p
 
     def __setup_search(self, keyword, math_path, math_case, whole_world, regex, offset, limit, sort_type):
         self.dll.Everything_Reset()  # 重置状态
@@ -206,8 +209,10 @@ class EverythingTool:
             is_file = self.dll.Everything_IsFileResult(i)
             is_folder = self.dll.Everything_IsFolderResult(i)
             is_volume = self.dll.Everything_IsVolumeResult(i)
+            highlight_filename = self.dll.Everything_GetResultHighlightedFileNameW(i)
 
             yield {
+                'highlight_filename': highlight_filename,
                 'name': ctypes.wstring_at(filename),
                 'type': self.__get_file_type(is_file, is_folder, is_volume),
                 'size': file_size.value,
