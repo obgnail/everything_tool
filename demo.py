@@ -8,6 +8,10 @@ if __name__ == '__main__':
             version = tool.version()
             print(f'version: {version}')
 
-            result = tool.search("RJ*.zip")
-            for i in result:
-                print(i)
+            for file in tool.search(".zip", limit=3):
+                print(file)
+
+            flags = (everything_tool.EVERYTHING_REQUEST_FILE_NAME
+                     | everything_tool.EVERYTHING_REQUEST_ATTRIBUTES)
+            for file in tool.search_audio('aaa', math_case=True, flags=flags):
+                print(file)

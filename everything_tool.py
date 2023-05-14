@@ -2,6 +2,7 @@ import ctypes
 import datetime
 import struct
 import win32api
+from functools import reduce
 
 # defines flag
 EVERYTHING_REQUEST_FILE_NAME = 0x00000001  # 文件名
@@ -119,6 +120,8 @@ DEFAULT_FLAGS = (
         | EVERYTHING_REQUEST_DATE_MODIFIED
 )
 
+ALL_FLAGS = reduce(lambda x, y: x | y, SUPPORTED_FLAGS)
+
 # convert a windows FILETIME to a python datetime
 # https://stackoverflow.com/questions/39481221/convert-datetime-back-to-windows-64-bit-filetime
 WINDOWS_TICKS = int(1 / 10 ** -7)  # 10,000,000 (100 nanoseconds or .1 microseconds)
@@ -126,6 +129,15 @@ WINDOWS_EPOCH = datetime.datetime.strptime('1601-01-01 00:00:00', '%Y-%m-%d %H:%
 POSIX_EPOCH = datetime.datetime.strptime('1970-01-01 00:00:00', '%Y-%m-%d %H:%M:%S')
 EPOCH_DIFF = (POSIX_EPOCH - WINDOWS_EPOCH).total_seconds()  # 11644473600.0
 WINDOWS_TICKS_TO_POSIX_EPOCH = EPOCH_DIFF * WINDOWS_TICKS  # 116444736000000000.0
+
+
+class EverythingError(BaseException):
+    def __init__(self, error_info):
+        super().__init__(self)
+        self.error_info = error_info
+
+    def __str__(self):
+        return self.error_info
 
 
 class EverythingTool:
@@ -192,8 +204,7 @@ class EverythingTool:
                 selected_flags.append(value)
 
         if temp != 0:
-            msg = f"error flags: {flags}"
-            raise BaseException(msg)
+            raise AttributeError(f"error flags: {flags}")
 
         return selected_flags
 
@@ -219,20 +230,22 @@ class EverythingTool:
         if error == EVERYTHING_OK:
             return None
         elif error == EVERYTHING_ERROR_MEMORY:
-            return "out of memory"
+            error_info = "out of memory"
         elif error == EVERYTHING_ERROR_IPC:
-            return "IPC not available"
+            error_info = "IPC not available"
         elif error == EVERYTHING_ERROR_REGISTERCLASSEX:
-            return "RegisterClassEx failed"
+            error_info = "RegisterClassEx failed"
         elif error == EVERYTHING_ERROR_CREATEWINDOW:
-            return "CreateWindow failed"
+            error_info = "CreateWindow failed"
         elif error == EVERYTHING_ERROR_CREATETHREAD:
-            return "CreateThread failed"
+            error_info = "CreateThread failed"
         elif error == EVERYTHING_ERROR_INVALIDINDEX:
-            return "Invalid result index (must be >= 0 and < numResults)"
+            error_info = "Invalid result index (must be >= 0 and < numResults)"
         elif error == EVERYTHING_ERROR_INVALIDCALL:
-            return "Call Everything_Query before getting results"
-        return 'unknownError'
+            error_info = "Call Everything_Query before getting results"
+        else:
+            error_info = 'unknownError'
+        return EverythingError(error_info)
 
     def __create_buffers(self):
         buffer = {
@@ -303,7 +316,7 @@ class EverythingTool:
         self.dll.Everything_GetResultAttributes.argtypes = [ctypes.c_int]
         self.dll.Everything_GetResultAttributes.restype = ctypes.POINTER(ctypes.c_ulonglong)
 
-    def __setup_search(self, keyword, math_path, math_case, whole_world, regex, offset, limit, sort_type):
+    def __setup_search(self, keyword, math_path, math_case, whole_world, regex, offset, limit, flags, sort_type):
         self.dll.Everything_Reset()  # 重置状态
         self.dll.Everything_SetMatchPath(math_path)
         self.dll.Everything_SetMatchCase(math_case)
@@ -311,7 +324,7 @@ class EverythingTool:
         self.dll.Everything_SetRegex(regex)
         self.dll.Everything_SetSort(sort_type)
         self.dll.Everything_SetSearchW(keyword)
-        self.dll.Everything_SetRequestFlags(DEFAULT_FLAGS)
+        self.dll.Everything_SetRequestFlags(flags)
         self.dll.Everything_SetOffset(offset)
         if limit > 0:
             self.dll.Everything_SetMax(limit)
@@ -367,8 +380,7 @@ class EverythingTool:
                 attr_name += name
 
         if temp != 0:
-            msg = f"error attr: {num}"
-            raise BaseException(msg)
+            raise AttributeError(f"error attr: {num}")
 
         attr_name = attr_name[::-1]
         return attr_name
@@ -444,10 +456,10 @@ class EverythingTool:
         :param sort_type: 排序
         :return:
         """
-        selected_flags = self.__get_selected_flags(flags)
-        self.__setup_search(keyword, math_path, math_case, whole_world, regex, offset, limit, sort_type)
+        self.__setup_search(keyword, math_path, math_case, whole_world, regex, offset, limit, flags, sort_type)
         num_results = self.__execute_search()
 
+        selected_flags = self.__get_selected_flags(flags)
         for idx in range(num_results):
             data = {}
             for flag in selected_flags:
