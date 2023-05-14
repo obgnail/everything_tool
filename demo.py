@@ -11,6 +11,6 @@ if __name__ == '__main__':
             # result = tool.search("RJ*")
             # print(len(list(result)))
 
-            result = tool.search(".epub")
+            result = tool.search("vimd.exe")
             for i in result:
                 print(i)

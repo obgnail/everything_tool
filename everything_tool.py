@@ -4,22 +4,22 @@ import struct
 import win32api
 
 # defines
-EVERYTHING_REQUEST_FILE_NAME = 0x00000001
-EVERYTHING_REQUEST_PATH = 0x00000002
+EVERYTHING_REQUEST_FILE_NAME = 0x00000001  # ✓
+EVERYTHING_REQUEST_PATH = 0x00000002  # ✓
 EVERYTHING_REQUEST_FULL_PATH_AND_FILE_NAME = 0x00000004
-EVERYTHING_REQUEST_EXTENSION = 0x00000008
-EVERYTHING_REQUEST_SIZE = 0x00000010
-EVERYTHING_REQUEST_DATE_CREATED = 0x00000020
-EVERYTHING_REQUEST_DATE_MODIFIED = 0x00000040
-EVERYTHING_REQUEST_DATE_ACCESSED = 0x00000080
+EVERYTHING_REQUEST_EXTENSION = 0x00000008  # ✓
+EVERYTHING_REQUEST_SIZE = 0x00000010  # ✓
+EVERYTHING_REQUEST_DATE_CREATED = 0x00000020  # ✓
+EVERYTHING_REQUEST_DATE_MODIFIED = 0x00000040  # ✓
+EVERYTHING_REQUEST_DATE_ACCESSED = 0x00000080  # ✓
 EVERYTHING_REQUEST_ATTRIBUTES = 0x00000100
-EVERYTHING_REQUEST_FILE_LIST_FILE_NAME = 0x00000200
-EVERYTHING_REQUEST_RUN_COUNT = 0x00000400
+EVERYTHING_REQUEST_FILE_LIST_FILE_NAME = 0x00000200  # ✓
+EVERYTHING_REQUEST_RUN_COUNT = 0x00000400  # ✓
 EVERYTHING_REQUEST_DATE_RUN = 0x00000800
 EVERYTHING_REQUEST_DATE_RECENTLY_CHANGED = 0x00001000
-EVERYTHING_REQUEST_HIGHLIGHTED_FILE_NAME = 0x00002000
-EVERYTHING_REQUEST_HIGHLIGHTED_PATH = 0x00004000
-EVERYTHING_REQUEST_HIGHLIGHTED_FULL_PATH_AND_FILE_NAME = 0x00008000
+EVERYTHING_REQUEST_HIGHLIGHTED_FILE_NAME = 0x00002000  # ✓
+EVERYTHING_REQUEST_HIGHLIGHTED_PATH = 0x00004000  # ✓
+EVERYTHING_REQUEST_HIGHLIGHTED_FULL_PATH_AND_FILE_NAME = 0x00008000  # ✓
 
 # 排序状态映射
 EVERYTHING_SORT_NAME_ASCENDING = 1
@@ -65,9 +65,11 @@ default_flags = (
         | EVERYTHING_REQUEST_DATE_MODIFIED
         | EVERYTHING_REQUEST_DATE_ACCESSED
         | EVERYTHING_REQUEST_EXTENSION
+        | EVERYTHING_REQUEST_RUN_COUNT
         | EVERYTHING_REQUEST_HIGHLIGHTED_FILE_NAME
         | EVERYTHING_REQUEST_HIGHLIGHTED_PATH
         | EVERYTHING_REQUEST_HIGHLIGHTED_FULL_PATH_AND_FILE_NAME
+        | EVERYTHING_REQUEST_FILE_LIST_FILE_NAME
 )
 
 
@@ -140,18 +142,32 @@ class EverythingTool:
 
     def __define_ctypes(self):
         self.dll.Everything_GetResultDateCreated.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
+
         self.dll.Everything_GetResultDateModified.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
+
         self.dll.Everything_GetResultDateAccessed.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
+
         self.dll.Everything_GetResultSize.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
+
         self.dll.Everything_GetResultExtensionW.restype = ctypes.c_wchar_p
+
         self.dll.Everything_GetResultFileNameW.argtypes = [ctypes.c_int]
         self.dll.Everything_GetResultFileNameW.restype = ctypes.c_wchar_p
+
+        self.dll.Everything_GetResultRunCount.argtypes = [ctypes.c_int]
+        self.dll.Everything_GetResultRunCount.restype = ctypes.c_int
+
         self.dll.Everything_GetResultHighlightedFileNameW.argtypes = [ctypes.c_int]
         self.dll.Everything_GetResultHighlightedFileNameW.restype = ctypes.c_wchar_p
+
         self.dll.Everything_GetResultHighlightedPathW.argtypes = [ctypes.c_int]
         self.dll.Everything_GetResultHighlightedPathW.restype = ctypes.c_wchar_p
+
         self.dll.Everything_GetResultHighlightedFullPathAndFileNameW.argtypes = [ctypes.c_int]
         self.dll.Everything_GetResultHighlightedFullPathAndFileNameW.restype = ctypes.c_wchar_p
+
+        self.dll.Everything_GetResultFileListFileNameW.argtypes = [ctypes.c_int]
+        self.dll.Everything_GetResultFileListFileNameW.restype = ctypes.c_wchar_p
 
     def __setup_search(self, keyword, math_path, math_case, whole_world, regex, offset, limit, sort_type):
         self.dll.Everything_Reset()  # 重置状态
@@ -212,10 +228,12 @@ class EverythingTool:
             self.dll.Everything_GetResultDateCreated(i, time_created)
             self.dll.Everything_GetResultDateModified(i, time_modified)
 
-            extension = self.dll.Everything_GetResultExtensionW(i)
             is_file = self.dll.Everything_IsFileResult(i)
             is_folder = self.dll.Everything_IsFolderResult(i)
             is_volume = self.dll.Everything_IsVolumeResult(i)
+            extension = self.dll.Everything_GetResultExtensionW(i)
+            run_count = self.dll.Everything_GetResultRunCount(i)  # returns 0 if unavailable
+            result_file_list_file_name = self.dll.Everything_GetResultFileListFileNameW(i)
             highlight_name = self.dll.Everything_GetResultHighlightedFileNameW(i)
             highlight_path = self.dll.Everything_GetResultHighlightedPathW(i)
             highlight_name_path = self.dll.Everything_GetResultHighlightedFullPathAndFileNameW(i)
@@ -225,6 +243,8 @@ class EverythingTool:
                 'type': self.__get_file_type(is_file, is_folder, is_volume),
                 'size': size.value,
                 'extension': extension,
+                'run_count': run_count,
+                'file_list_file_name': result_file_list_file_name,
                 'accessed_time': self.__get_time(time_accessed),
                 'created_time': self.__get_time(time_created),
                 'modified_time': self.__get_time(time_modified),
