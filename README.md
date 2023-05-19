@@ -70,7 +70,7 @@ def search(
         regex: bool = False,
         offset: int = 0,
         limit: int = -1,
-        flags: int = DEFAULT_FLAGS,
+        flags: [int, Iterable[int]] = DEFAULT_FLAGS,
         sort: int = EVERYTHING_SORT_NAME_ASCENDING
 ) -> Iterable[Dict]:
     """
@@ -84,7 +84,7 @@ def search(
     :param limit: 最大数目,<0则查询所有
     :param flags: 查询字段
     :param sort: 排序
-    :return: 记录字典
+    :return: 记录字典的生成器
     """
     pass
 ```

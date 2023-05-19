@@ -179,7 +179,7 @@ class EverythingTool:
     def __enter__(self):
         self.dll = ctypes.WinDLL(self.dll_path)  # dll imports
 
-        if not self.check_running():
+        if not self.is_running():
             raise self.error
 
         self._create_buffers()
@@ -201,7 +201,7 @@ class EverythingTool:
         return datetime.datetime.fromtimestamp(microseconds)
 
     @staticmethod
-    def _get_search_flags(flags_num: int) -> List[int]:
+    def _flags_int_2_list(flags_num: int) -> List[int]:
         remain = flags_num
         search_flags = []
         for i in range(0, len(_SUPPORTED_FLAGS)):
@@ -217,46 +217,6 @@ class EverythingTool:
             raise AttributeError(f"error flags: {flags_num}")
 
         return search_flags
-
-    def check_running(self) -> bool:
-        _ = self.version()
-        err = self.get_last_error()
-        if err is not None:
-            self.error = err
-            return False
-        return True
-
-    def version(self) -> str:
-        major_version = self.dll.Everything_GetMajorVersion()
-        minor_version = self.dll.Everything_GetMinorVersion()
-        revision = self.dll.Everything_GetRevision()
-        build_number = self.dll.Everything_GetBuildNumber()
-        version_string = f'{major_version}.{minor_version}.{revision}.{build_number}'
-        return version_string
-
-    def get_last_error(self) -> [EverythingError, None]:
-        error = self.dll.Everything_GetLastError()
-
-        if error == EVERYTHING_OK:
-            return None
-        elif error == EVERYTHING_ERROR_MEMORY:
-            error_info = "out of memory"
-        elif error == EVERYTHING_ERROR_IPC:
-            error_info = "IPC not available"
-        elif error == EVERYTHING_ERROR_REGISTERCLASSEX:
-            error_info = "register classEx failed"
-        elif error == EVERYTHING_ERROR_CREATEWINDOW:
-            error_info = "create window failed"
-        elif error == EVERYTHING_ERROR_CREATETHREAD:
-            error_info = "create thread failed"
-        elif error == EVERYTHING_ERROR_INVALIDINDEX:
-            error_info = "invalid result index (must be >= 0 and < numResults)"
-        elif error == EVERYTHING_ERROR_INVALIDCALL:
-            error_info = "call everything query before getting results"
-        else:
-            error_info = 'unknown error'
-
-        return EverythingError(error_info)
 
     def _create_buffers(self) -> None:
         buffers = {
@@ -451,6 +411,54 @@ class EverythingTool:
         result_num = self.dll.Everything_GetNumResults()  # get the number of results
         return result_num
 
+    def is_running(self) -> bool:
+        _ = self.version()
+        err = self.get_last_error()
+        if err is not None:
+            self.error = err
+            return False
+        return True
+
+    def version(self) -> str:
+        major_version = self.dll.Everything_GetMajorVersion()
+        minor_version = self.dll.Everything_GetMinorVersion()
+        revision = self.dll.Everything_GetRevision()
+        build_number = self.dll.Everything_GetBuildNumber()
+        version_string = f'{major_version}.{minor_version}.{revision}.{build_number}'
+        return version_string
+
+    def get_last_error(self) -> [EverythingError, None]:
+        error = self.dll.Everything_GetLastError()
+
+        if error == EVERYTHING_OK:
+            return None
+        elif error == EVERYTHING_ERROR_MEMORY:
+            error_info = "out of memory"
+        elif error == EVERYTHING_ERROR_IPC:
+            error_info = "IPC not available"
+        elif error == EVERYTHING_ERROR_REGISTERCLASSEX:
+            error_info = "register classEx failed"
+        elif error == EVERYTHING_ERROR_CREATEWINDOW:
+            error_info = "create window failed"
+        elif error == EVERYTHING_ERROR_CREATETHREAD:
+            error_info = "create thread failed"
+        elif error == EVERYTHING_ERROR_INVALIDINDEX:
+            error_info = "invalid result index (must be >= 0 and < numResults)"
+        elif error == EVERYTHING_ERROR_INVALIDCALL:
+            error_info = "call everything query before getting results"
+        else:
+            error_info = 'unknown error'
+
+        return EverythingError(error_info)
+
+    def _flags_adapter(self, flags: [int, Iterable[int]]) -> [int, list[int]]:
+        if isinstance(flags, int):
+            return flags, self._flags_int_2_list(flags)
+        elif isinstance(flags, Iterable):
+            return reduce(lambda x, y: x | y, flags), list(flags)
+        else:
+            raise AttributeError('arg flags must be int/list')
+
     def search(
             self,
             keyword: str,
@@ -460,7 +468,7 @@ class EverythingTool:
             regex: bool = False,
             offset: int = 0,
             limit: int = -1,
-            flags: int = DEFAULT_FLAGS,
+            flags: [int, Iterable[int]] = DEFAULT_FLAGS,
             sort: int = EVERYTHING_SORT_NAME_ASCENDING
     ) -> Iterable[Dict]:
         """
@@ -474,22 +482,23 @@ class EverythingTool:
         :param limit: 最大数目,<0则查询所有
         :param flags: 查询字段
         :param sort: 排序
-        :return: 记录字典
+        :return: 记录字典的生成器
         """
-        search_flags = self._get_search_flags(flags)
-        self._setup(keyword, math_path, math_case, whole_world, regex, offset, limit, flags, sort)
+
+        flag_num, flag_list = self._flags_adapter(flags)
+        self._setup(keyword, math_path, math_case, whole_world, regex, offset, limit, flag_num, sort)
         result_num = self._execute_search()
 
         for idx in range(result_num):
             data = {}
-            for flag in search_flags:
+            for flag in flag_list:
                 key, func = self.flag_func_map[flag]
                 if func is not None:
                     data[key] = func(idx)
 
             yield data
 
-    def search_in_located(self, path, keywords='', **kwargs):
+    def search_in_located(self, path: str, keywords='', **kwargs):
         """搜索路径下文件"""
         return self.search(f'{path} {keywords}', **kwargs)
 
@@ -497,8 +506,11 @@ class EverythingTool:
         """搜索文件夹"""
         return self.search(f'folder: {keywords}', **kwargs)
 
-    def search_ext(self, ext, keywords='', **kwargs):
+    def search_ext(self, ext: [str, list, tuple], keywords='', **kwargs):
         """搜索扩展名称"""
+        if isinstance(ext, (list, tuple)):
+            ext = ';'.join(ext)
+        ext = ext.replace('.', '')
         return self.search(f'ext:{ext} {keywords}', **kwargs)
 
     def search_audio(self, keywords='', **kwargs):
