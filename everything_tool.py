@@ -182,9 +182,9 @@ class EverythingTool:
         if not self.check_running():
             raise self.error
 
-        self.__create_buffers()
-        self.__define_ctypes()
-        self.__create_flag_map()
+        self._create_buffers()
+        self._define_ctypes()
+        self._create_flag_map()
 
         return self
 
@@ -192,7 +192,7 @@ class EverythingTool:
         win32api.FreeLibrary(self.dll._handle)
 
     @staticmethod
-    def __get_time(filetime) -> [datetime.datetime, None]:
+    def _get_time(filetime) -> [datetime.datetime, None]:
         """Convert windows filetime winticks to python datetime.datetime."""
         win_ticks = struct.unpack('<Q', filetime)[0]
         if win_ticks == 18446744073709551615:
@@ -201,9 +201,9 @@ class EverythingTool:
         return datetime.datetime.fromtimestamp(microseconds)
 
     @staticmethod
-    def __get_selected_flags(flags_num: int) -> List[int]:
+    def _get_search_flags(flags_num: int) -> List[int]:
         remain = flags_num
-        selected_flags = []
+        search_flags = []
         for i in range(0, len(_SUPPORTED_FLAGS)):
             if remain == 0:
                 break
@@ -211,12 +211,12 @@ class EverythingTool:
             value = _SUPPORTED_FLAGS[i]
             if remain >= value:
                 remain -= value
-                selected_flags.append(value)
+                search_flags.append(value)
 
         if remain != 0:
             raise AttributeError(f"error flags: {flags_num}")
 
-        return selected_flags
+        return search_flags
 
     def check_running(self) -> bool:
         _ = self.version()
@@ -258,7 +258,7 @@ class EverythingTool:
 
         return EverythingError(error_info)
 
-    def __create_buffers(self) -> None:
+    def _create_buffers(self) -> None:
         buffers = {
             'full_path': ctypes.create_unicode_buffer(260),
             'size': ctypes.c_ulonglong(1),
@@ -270,7 +270,9 @@ class EverythingTool:
         }
         self.buffers = buffers
 
-    def __create_flag_map(self) -> None:
+    def _create_flag_map(self) -> None:
+        flag_list = _SUPPORTED_FLAGS
+
         key_list = ('highlighted_full_path', 'highlighted_path',
                     'highlighted_name', 'recently_changed',
                     'date_run', 'run_count',
@@ -280,19 +282,19 @@ class EverythingTool:
                     'extension', 'full_path',
                     'path', 'name')
 
-        func_list = (self.__get_flag_highlighted_full_path, self.__get_flag_highlighted_path,
-                     self.__get_flag_highlighted_name, self.__get_flag_recently_changed,
-                     self.__get_flag_date_run, self.__get_flag_run_count,
-                     self.__get_flag_file_list_file_name, self.__get_flag_attributes,
-                     self.__get_flag_accessed_time, self.__get_flag_modified_time,
-                     self.__get_flag_created_time, self.__get_flag_size,
-                     self.__get_flag_extension, self.__get_flag_full_path,
-                     self.__get_flag_path, self.__get_flag_name)
+        func_list = (self._get_flag_highlighted_full_path, self._get_flag_highlighted_path,
+                     self._get_flag_highlighted_name, self._get_flag_recently_changed,
+                     self._get_flag_date_run, self._get_flag_run_count,
+                     self._get_flag_file_list_file_name, self._get_flag_attributes,
+                     self._get_flag_accessed_time, self._get_flag_modified_time,
+                     self._get_flag_created_time, self._get_flag_size,
+                     self._get_flag_extension, self._get_flag_full_path,
+                     self._get_flag_path, self._get_flag_name)
 
-        d = {flag: (key, func) for flag, key, func in zip(_SUPPORTED_FLAGS, key_list, func_list)}
+        d = {flag: (key, func) for flag, key, func in zip(flag_list, key_list, func_list)}
         self.flag_func_map = d
 
-    def __define_ctypes(self) -> None:
+    def _define_ctypes(self) -> None:
         self.dll.Everything_GetResultDateCreated.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
 
         self.dll.Everything_GetResultDateModified.argtypes = [ctypes.c_int, ctypes.POINTER(ctypes.c_ulonglong)]
@@ -331,8 +333,8 @@ class EverythingTool:
         self.dll.Everything_GetResultAttributes.argtypes = [ctypes.c_int]
         self.dll.Everything_GetResultAttributes.restype = ctypes.POINTER(ctypes.c_ulonglong)
 
-    def __setup_search(self, keyword, math_path, math_case, whole_world,
-                       regex, offset, limit, flags, sort) -> None:
+    def _setup(self, keyword, math_path, math_case, whole_world,
+               regex, offset, limit, flags, sort) -> None:
         self.dll.Everything_Reset()  # 重置状态
         self.dll.Everything_SetSearchW(keyword)
         self.dll.Everything_SetMatchPath(math_path)
@@ -346,20 +348,20 @@ class EverythingTool:
         if limit > 0:
             self.dll.Everything_SetMax(limit)
 
-    def __get_flag_name(self, idx) -> str:
+    def _get_flag_name(self, idx) -> str:
         name = self.dll.Everything_GetResultFileNameW(idx)
         return name
 
-    def __get_flag_path(self, idx) -> str:
+    def _get_flag_path(self, idx) -> str:
         file_path = self.dll.Everything_GetResultPathW(idx)
         return file_path
 
-    def __get_flag_full_path(self, idx) -> str:
+    def _get_flag_full_path(self, idx) -> str:
         name = self.buffers['full_path']
         self.dll.Everything_GetResultFullPathNameW(idx, name, 260)
         return ctypes.wstring_at(name)
 
-    def __get_flag_type(self, idx) -> str:
+    def _get_flag_type(self, idx) -> str:
         if self.dll.Everything_IsFileResult(idx) == 1:
             return 'file'
         elif self.dll.Everything_IsFolderResult(idx) == 1:
@@ -369,20 +371,20 @@ class EverythingTool:
         else:
             return 'unknown'
 
-    def __get_flag_size(self, idx) -> int:
+    def _get_flag_size(self, idx) -> int:
         size = self.buffers['size']
         self.dll.Everything_GetResultSize(idx, size)
         return size.value
 
-    def __get_flag_extension(self, idx) -> str:
+    def _get_flag_extension(self, idx) -> str:
         ext = self.dll.Everything_GetResultExtensionW(idx)
         return ext
 
-    def __get_flag_run_count(self, idx) -> int:
+    def _get_flag_run_count(self, idx) -> int:
         run_count = self.dll.Everything_GetResultRunCount(idx)  # returns 0 if unavailable
         return run_count
 
-    def __get_flag_attributes(self, idx) -> str:
+    def _get_flag_attributes(self, idx) -> str:
         attr = self.dll.Everything_GetResultAttributes(idx)
         attr_num = struct.unpack('<Q', attr)[0]
 
@@ -403,48 +405,48 @@ class EverythingTool:
         attr_names = attr_names[::-1]
         return attr_names
 
-    def __get_flag_file_list_file_name(self, idx) -> str:
+    def _get_flag_file_list_file_name(self, idx) -> str:
         file_list_file_name = self.dll.Everything_GetResultFileListFileNameW(idx)
         return file_list_file_name
 
-    def __get_flag_accessed_time(self, idx) -> datetime.datetime:
+    def _get_flag_accessed_time(self, idx) -> datetime.datetime:
         time_accessed = self.buffers['accessed_time']
         self.dll.Everything_GetResultDateAccessed(idx, time_accessed)
-        return self.__get_time(time_accessed)
+        return self._get_time(time_accessed)
 
-    def __get_flag_created_time(self, idx) -> datetime.datetime:
+    def _get_flag_created_time(self, idx) -> datetime.datetime:
         time_created = self.buffers['created_time']
         self.dll.Everything_GetResultDateCreated(idx, time_created)
-        return self.__get_time(time_created)
+        return self._get_time(time_created)
 
-    def __get_flag_modified_time(self, idx) -> datetime.datetime:
+    def _get_flag_modified_time(self, idx) -> datetime.datetime:
         modified_time = self.buffers['modified_time']
         self.dll.Everything_GetResultDateModified(idx, modified_time)
-        return self.__get_time(modified_time)
+        return self._get_time(modified_time)
 
-    def __get_flag_recently_changed(self, idx) -> datetime.datetime:
+    def _get_flag_recently_changed(self, idx) -> datetime.datetime:
         recently_changed = self.buffers['recently_changed']
         self.dll.Everything_GetResultDateRecentlyChanged(idx, recently_changed)
-        return self.__get_time(recently_changed)
+        return self._get_time(recently_changed)
 
-    def __get_flag_date_run(self, idx) -> datetime.datetime:
+    def _get_flag_date_run(self, idx) -> datetime.datetime:
         date_run = self.buffers['date_run']
         self.dll.Everything_GetResultDateRun(idx, date_run)
-        return self.__get_time(date_run)
+        return self._get_time(date_run)
 
-    def __get_flag_highlighted_name(self, idx) -> str:
+    def _get_flag_highlighted_name(self, idx) -> str:
         highlight_name = self.dll.Everything_GetResultHighlightedFileNameW(idx)
         return highlight_name
 
-    def __get_flag_highlighted_path(self, idx) -> str:
+    def _get_flag_highlighted_path(self, idx) -> str:
         highlight_path = self.dll.Everything_GetResultHighlightedPathW(idx)
         return highlight_path
 
-    def __get_flag_highlighted_full_path(self, idx) -> str:
+    def _get_flag_highlighted_full_path(self, idx) -> str:
         highlight_full_path = self.dll.Everything_GetResultHighlightedFullPathAndFileNameW(idx)
         return highlight_full_path
 
-    def __execute_search(self) -> int:
+    def _execute_search(self) -> int:
         self.dll.Everything_QueryW(1)  # execute the query
         result_num = self.dll.Everything_GetNumResults()  # get the number of results
         return result_num
@@ -474,13 +476,13 @@ class EverythingTool:
         :param sort: 排序
         :return: 记录字典
         """
-        selected_flags = self.__get_selected_flags(flags)
-        self.__setup_search(keyword, math_path, math_case, whole_world, regex, offset, limit, flags, sort)
-        result_num = self.__execute_search()
+        search_flags = self._get_search_flags(flags)
+        self._setup(keyword, math_path, math_case, whole_world, regex, offset, limit, flags, sort)
+        result_num = self._execute_search()
 
         for idx in range(result_num):
             data = {}
-            for flag in selected_flags:
+            for flag in search_flags:
                 key, func = self.flag_func_map[flag]
                 if func is not None:
                     data[key] = func(idx)
