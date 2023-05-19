@@ -293,10 +293,10 @@ class EverythingTool:
         self.dll.Everything_GetResultAttributes.argtypes = [ctypes.c_int]
         self.dll.Everything_GetResultAttributes.restype = ctypes.POINTER(ctypes.c_ulonglong)
 
-    def _setup(self, keyword, math_path, math_case, whole_world,
+    def _setup(self, keywords, math_path, math_case, whole_world,
                regex, offset, limit, flags, sort) -> None:
         self.dll.Everything_Reset()  # 重置状态
-        self.dll.Everything_SetSearchW(keyword)
+        self.dll.Everything_SetSearchW(keywords)
         self.dll.Everything_SetMatchPath(math_path)
         self.dll.Everything_SetMatchCase(math_case)
         self.dll.Everything_SetMatchWholeWord(whole_world)
@@ -461,7 +461,7 @@ class EverythingTool:
 
     def search(
             self,
-            keyword: str,
+            keywords: str,
             math_path: bool = False,
             math_case: bool = False,
             whole_world: bool = False,
@@ -473,7 +473,7 @@ class EverythingTool:
     ) -> Iterable[Dict]:
         """
         everything搜索文件
-        :param keyword: 搜索关键字,支持所有everything搜索语法
+        :param keywords: 搜索关键字,支持所有everything搜索语法
         :param math_path: 匹配路径
         :param math_case: 区分大小写
         :param whole_world: 全字匹配
@@ -486,7 +486,7 @@ class EverythingTool:
         """
 
         flag_num, flag_list = self._flags_adapter(flags)
-        self._setup(keyword, math_path, math_case, whole_world, regex, offset, limit, flag_num, sort)
+        self._setup(keywords, math_path, math_case, whole_world, regex, offset, limit, flag_num, sort)
         result_num = self._execute_search()
 
         for idx in range(result_num):
