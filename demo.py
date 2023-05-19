@@ -1,17 +1,22 @@
-import everything_tool
+import everything_tool as et
+
+
+def search():
+    try:
+        with et.EverythingTool() as tool:
+
+            version = tool.version()
+            print(f'everything version: {version}')
+
+            keyword = 'tel'  # 搜索关键词
+            flags = et.EVERYTHING_REQUEST_FILE_NAME | et.EVERYTHING_REQUEST_SIZE  # 查询文件名和文件大小
+            sort = et.EVERYTHING_SORT_SIZE_DESCENDING  # 搜索结果以大小降序排列
+            for file in tool.search(keyword, flags=flags, sort=sort):
+                print(file)
+
+    except (AttributeError, et.EverythingError) as e:
+        print('error:', e)
+
 
 if __name__ == '__main__':
-    try:
-        with everything_tool.EverythingTool() as tool:
-            version = tool.version()
-            print(f'version: {version}')
-
-            for file in tool.search(".zip", limit=3):
-                print(file)
-
-            flags = (everything_tool.EVERYTHING_REQUEST_FILE_NAME
-                     | everything_tool.EVERYTHING_REQUEST_ATTRIBUTES)
-            for file in tool.search_audio('aaa', math_case=True, flags=flags):
-                print(file)
-    except (AttributeError, everything_tool.EverythingError) as e:
-        print('error:', e)
+    search()

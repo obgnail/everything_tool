@@ -17,7 +17,7 @@ EVERYTHING_REQUEST_FILE_NAME = 0x00000001  # 文件名
 EVERYTHING_REQUEST_PATH = 0x00000002  # 不含文件的路径
 EVERYTHING_REQUEST_FULL_PATH_AND_FILE_NAME = 0x00000004  # 包含文件名的路径
 EVERYTHING_REQUEST_EXTENSION = 0x00000008  # 拓展名
-EVERYTHING_REQUEST_SIZE = 0x00000010  # 大小(byte)
+EVERYTHING_REQUEST_SIZE = 0x00000010  # 大小(字节)
 EVERYTHING_REQUEST_DATE_CREATED = 0x00000020  # 创建时间
 EVERYTHING_REQUEST_DATE_MODIFIED = 0x00000040  # 修改时间
 EVERYTHING_REQUEST_DATE_ACCESSED = 0x00000080  # 访问时间
@@ -86,7 +86,7 @@ EVERYTHING_ERROR_INVALIDINDEX = 6  # Invalid result index (must be >= 0 and < nu
 EVERYTHING_ERROR_INVALIDCALL = 7  # Call Everything_Query before getting results
 
 # see more: https://en.wikipedia.org/wiki/File_attribute
-ATTRIBUTES = (
+_ATTRIBUTES = (
     (EVERYTHING_FILE_ATTRIBUTE_ENCRYPTED, 'E'),
     (EVERYTHING_FILE_ATTRIBUTE_NOT_CONTENT_INDEXED, 'I'),
     (EVERYTHING_FILE_ATTRIBUTE_OFFLINE, 'O'),
@@ -103,7 +103,7 @@ ATTRIBUTES = (
     (EVERYTHING_FILE_ATTRIBUTE_READONLY, 'R'),
 )
 
-SUPPORTED_FLAGS = (
+_SUPPORTED_FLAGS = (
     EVERYTHING_REQUEST_HIGHLIGHTED_FULL_PATH_AND_FILE_NAME,
     EVERYTHING_REQUEST_HIGHLIGHTED_PATH,
     EVERYTHING_REQUEST_HIGHLIGHTED_FILE_NAME,
@@ -128,7 +128,7 @@ DEFAULT_FLAGS: int = (
         | EVERYTHING_REQUEST_DATE_MODIFIED
 )
 
-ALL_FLAGS: int = reduce(lambda x, y: x | y, SUPPORTED_FLAGS)
+ALL_FLAGS: int = reduce(lambda x, y: x | y, _SUPPORTED_FLAGS)
 
 # convert a windows FILETIME to a python datetime
 # https://stackoverflow.com/questions/39481221/convert-datetime-back-to-windows-64-bit-filetime
@@ -146,6 +146,8 @@ class EverythingError(BaseException):
 
     def __str__(self):
         return self.error_info
+
+    __repr__ = __str__
 
 
 class EverythingTool:
@@ -192,27 +194,27 @@ class EverythingTool:
     @staticmethod
     def __get_time(filetime) -> [datetime.datetime, None]:
         """Convert windows filetime winticks to python datetime.datetime."""
-        winticks = struct.unpack('<Q', filetime)[0]
-        if winticks == 18446744073709551615:
+        win_ticks = struct.unpack('<Q', filetime)[0]
+        if win_ticks == 18446744073709551615:
             return None
-        microsecs = (winticks - WINDOWS_TICKS_TO_POSIX_EPOCH) / WINDOWS_TICKS
-        return datetime.datetime.fromtimestamp(microsecs)
+        microseconds = (win_ticks - WINDOWS_TICKS_TO_POSIX_EPOCH) / WINDOWS_TICKS
+        return datetime.datetime.fromtimestamp(microseconds)
 
     @staticmethod
-    def __get_selected_flags(flags: int) -> List[int]:
-        temp = flags
+    def __get_selected_flags(flags_num: int) -> List[int]:
+        remain = flags_num
         selected_flags = []
-        for i in range(0, len(SUPPORTED_FLAGS)):
-            if temp == 0:
+        for i in range(0, len(_SUPPORTED_FLAGS)):
+            if remain == 0:
                 break
 
-            value = SUPPORTED_FLAGS[i]
-            if temp >= value:
-                temp -= value
+            value = _SUPPORTED_FLAGS[i]
+            if remain >= value:
+                remain -= value
                 selected_flags.append(value)
 
-        if temp != 0:
-            raise AttributeError(f"error flags: {flags}")
+        if remain != 0:
+            raise AttributeError(f"error flags: {flags_num}")
 
         return selected_flags
 
@@ -222,7 +224,6 @@ class EverythingTool:
         if err is not None:
             self.error = err
             return False
-
         return True
 
     def version(self) -> str:
@@ -235,6 +236,7 @@ class EverythingTool:
 
     def get_last_error(self) -> [EverythingError, None]:
         error = self.dll.Everything_GetLastError()
+
         if error == EVERYTHING_OK:
             return None
         elif error == EVERYTHING_ERROR_MEMORY:
@@ -242,17 +244,17 @@ class EverythingTool:
         elif error == EVERYTHING_ERROR_IPC:
             error_info = "IPC not available"
         elif error == EVERYTHING_ERROR_REGISTERCLASSEX:
-            error_info = "RegisterClassEx failed"
+            error_info = "register classEx failed"
         elif error == EVERYTHING_ERROR_CREATEWINDOW:
-            error_info = "CreateWindow failed"
+            error_info = "create window failed"
         elif error == EVERYTHING_ERROR_CREATETHREAD:
-            error_info = "CreateThread failed"
+            error_info = "create thread failed"
         elif error == EVERYTHING_ERROR_INVALIDINDEX:
-            error_info = "Invalid result index (must be >= 0 and < numResults)"
+            error_info = "invalid result index (must be >= 0 and < numResults)"
         elif error == EVERYTHING_ERROR_INVALIDCALL:
-            error_info = "Call Everything_Query before getting results"
+            error_info = "call everything query before getting results"
         else:
-            error_info = 'unknownError'
+            error_info = 'unknown error'
 
         return EverythingError(error_info)
 
@@ -269,10 +271,14 @@ class EverythingTool:
         self.buffers = buffers
 
     def __create_flag_map(self) -> None:
-        key_list = ('highlighted_full_path', 'highlighted_path', 'highlighted_name', 'recently_changed',
-                    'date_run', 'run_count', 'file_list_file_name', 'attributes',
-                    'accessed_time', 'modified_time', 'created_time', 'size',
-                    'extension', 'full_path', 'path', 'name')
+        key_list = ('highlighted_full_path', 'highlighted_path',
+                    'highlighted_name', 'recently_changed',
+                    'date_run', 'run_count',
+                    'file_list_file_name', 'attributes',
+                    'accessed_time', 'modified_time',
+                    'created_time', 'size',
+                    'extension', 'full_path',
+                    'path', 'name')
 
         func_list = (self.__get_flag_highlighted_full_path, self.__get_flag_highlighted_path,
                      self.__get_flag_highlighted_name, self.__get_flag_recently_changed,
@@ -283,7 +289,7 @@ class EverythingTool:
                      self.__get_flag_extension, self.__get_flag_full_path,
                      self.__get_flag_path, self.__get_flag_name)
 
-        d = {flag: (key, func) for flag, key, func in zip(SUPPORTED_FLAGS, key_list, func_list)}
+        d = {flag: (key, func) for flag, key, func in zip(_SUPPORTED_FLAGS, key_list, func_list)}
         self.flag_func_map = d
 
     def __define_ctypes(self) -> None:
@@ -326,15 +332,15 @@ class EverythingTool:
         self.dll.Everything_GetResultAttributes.restype = ctypes.POINTER(ctypes.c_ulonglong)
 
     def __setup_search(self, keyword, math_path, math_case, whole_world,
-                       regex, offset, limit, flags, sort_type) -> None:
+                       regex, offset, limit, flags, sort) -> None:
         self.dll.Everything_Reset()  # 重置状态
+        self.dll.Everything_SetSearchW(keyword)
         self.dll.Everything_SetMatchPath(math_path)
         self.dll.Everything_SetMatchCase(math_case)
         self.dll.Everything_SetMatchWholeWord(whole_world)
         self.dll.Everything_SetRegex(regex)
-        self.dll.Everything_SetSort(sort_type)
-        self.dll.Everything_SetSearchW(keyword)
         self.dll.Everything_SetRequestFlags(flags)
+        self.dll.Everything_SetSort(sort)
         if offset > 0:
             self.dll.Everything_SetOffset(offset)
         if limit > 0:
@@ -360,7 +366,8 @@ class EverythingTool:
             return 'folder'
         elif self.dll.Everything_IsVolumeResult(idx) == 1:
             return 'volume'
-        return 'unknown'
+        else:
+            return 'unknown'
 
     def __get_flag_size(self, idx) -> int:
         size = self.buffers['size']
@@ -377,28 +384,28 @@ class EverythingTool:
 
     def __get_flag_attributes(self, idx) -> str:
         attr = self.dll.Everything_GetResultAttributes(idx)
-        num = struct.unpack('<Q', attr)[0]
+        attr_num = struct.unpack('<Q', attr)[0]
 
-        temp = num
-        attr_name = ''
-        for i in range(0, len(ATTRIBUTES)):
-            if temp == 0:
+        remain = attr_num
+        attr_names = ''
+        for i in range(0, len(_ATTRIBUTES)):
+            if remain == 0:
                 break
 
-            value, name = ATTRIBUTES[i]
-            if temp >= value:
-                temp -= value
-                attr_name += name
+            num, name = _ATTRIBUTES[i]
+            if remain >= num:
+                remain -= num
+                attr_names += name
 
-        if temp != 0:
-            raise AttributeError(f"error attr: {num}")
+        if remain != 0:
+            raise AttributeError(f"error attr: {attr_num}")
 
-        attr_name = attr_name[::-1]
-        return attr_name
+        attr_names = attr_names[::-1]
+        return attr_names
 
     def __get_flag_file_list_file_name(self, idx) -> str:
-        result_file_list_file_name = self.dll.Everything_GetResultFileListFileNameW(idx)
-        return result_file_list_file_name
+        file_list_file_name = self.dll.Everything_GetResultFileListFileNameW(idx)
+        return file_list_file_name
 
     def __get_flag_accessed_time(self, idx) -> datetime.datetime:
         time_accessed = self.buffers['accessed_time']
@@ -434,13 +441,13 @@ class EverythingTool:
         return highlight_path
 
     def __get_flag_highlighted_full_path(self, idx) -> str:
-        highlight_name_path = self.dll.Everything_GetResultHighlightedFullPathAndFileNameW(idx)
-        return highlight_name_path
+        highlight_full_path = self.dll.Everything_GetResultHighlightedFullPathAndFileNameW(idx)
+        return highlight_full_path
 
     def __execute_search(self) -> int:
         self.dll.Everything_QueryW(1)  # execute the query
-        num_results = self.dll.Everything_GetNumResults()  # get the number of results
-        return num_results
+        result_num = self.dll.Everything_GetNumResults()  # get the number of results
+        return result_num
 
     def search(
             self,
@@ -452,26 +459,26 @@ class EverythingTool:
             offset: int = 0,
             limit: int = -1,
             flags: int = DEFAULT_FLAGS,
-            sort_type: int = EVERYTHING_SORT_NAME_ASCENDING
+            sort: int = EVERYTHING_SORT_NAME_ASCENDING
     ) -> Iterable[Dict]:
         """
         everything搜索文件
-        :param keyword: 搜索关键字,支持通配符
+        :param keyword: 搜索关键字,支持所有everything搜索语法
         :param math_path: 匹配路径
         :param math_case: 区分大小写
         :param whole_world: 全字匹配
         :param regex: 使用正则表达式
         :param offset: 偏移量
-        :param limit: 最多几条
+        :param limit: 最大数目,<0则查询所有
         :param flags: 查询字段
-        :param sort_type: 排序
-        :return:
+        :param sort: 排序
+        :return: 记录字典
         """
-        self.__setup_search(keyword, math_path, math_case, whole_world, regex, offset, limit, flags, sort_type)
-        num_results = self.__execute_search()
-
         selected_flags = self.__get_selected_flags(flags)
-        for idx in range(num_results):
+        self.__setup_search(keyword, math_path, math_case, whole_world, regex, offset, limit, flags, sort)
+        result_num = self.__execute_search()
+
+        for idx in range(result_num):
             data = {}
             for flag in selected_flags:
                 key, func = self.flag_func_map[flag]
@@ -524,7 +531,7 @@ class EverythingTool:
 if __name__ == '__main__':
     try:
         with EverythingTool() as tool:
-            print("version:\t", tool.version())
+            print("everything version:\t", tool.version())
 
             result = tool.search("*.zip")
             print("*.zip:\t", len(list(result)))

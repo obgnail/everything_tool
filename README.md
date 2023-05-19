@@ -71,22 +71,22 @@ def search(
         offset: int = 0,
         limit: int = -1,
         flags: int = DEFAULT_FLAGS,
-        sort_type: int = EVERYTHING_SORT_NAME_ASCENDING
+        sort: int = EVERYTHING_SORT_NAME_ASCENDING
 ) -> Iterable[Dict]:
     """
     everything 搜索文件
-    :param keyword: 搜索关键字,支持通配符
+    :param keyword: 搜索关键字,支持所有everything搜索语法
     :param math_path: 匹配路径
     :param math_case: 区分大小写
     :param whole_world: 全字匹配
     :param regex: 使用正则表达式
     :param offset: 偏移量
-    :param limit: 最多几条
+    :param limit: 最大数目,<0则查询所有
     :param flags: 查询字段
-    :param sort_type: 排序
-    :return:
+    :param sort: 排序
+    :return: 记录字典
     """
-    ...
+    pass
 ```
 
 ```python
