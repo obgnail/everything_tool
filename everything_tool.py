@@ -335,7 +335,8 @@ class EverythingTool:
         self.dll.Everything_SetSort(sort_type)
         self.dll.Everything_SetSearchW(keyword)
         self.dll.Everything_SetRequestFlags(flags)
-        self.dll.Everything_SetOffset(offset)
+        if offset > 0:
+            self.dll.Everything_SetOffset(offset)
         if limit > 0:
             self.dll.Everything_SetMax(limit)
 
