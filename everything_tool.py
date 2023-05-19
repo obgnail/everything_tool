@@ -506,9 +506,9 @@ class EverythingTool:
         """搜索文件夹"""
         return self.search(f'folder: {keywords}', **kwargs)
 
-    def search_ext(self, ext: [str, list, tuple], keywords='', **kwargs):
+    def search_ext(self, ext: [str, Iterable[str]], keywords='', **kwargs):
         """搜索扩展名称"""
-        if isinstance(ext, (list, tuple)):
+        if isinstance(ext, Iterable):
             ext = ';'.join(ext)
         ext = ext.replace('.', '')
         return self.search(f'ext:{ext} {keywords}', **kwargs)
