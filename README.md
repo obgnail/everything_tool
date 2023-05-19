@@ -6,7 +6,7 @@ Everything SDK for python. Everything is required to run in the background.
 
 ## 环境
 
-本项目使用 IPC 与 everything 通讯，需要[下载](https://www.voidtools.com/zh-cn/downloads/)完整版的 everything 软件，精讲版的 everything 不支持 IPC。
+本项目使用 IPC 与 everything 通讯，需要[下载](https://www.voidtools.com/zh-cn/downloads/)完整版的 everything 软件，精简版的 everything 不支持 IPC。
 
 
 
