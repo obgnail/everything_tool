@@ -7,6 +7,7 @@ dependency (SDK): https://www.voidtools.com/Everything-SDK.zip
 """
 import ctypes
 import datetime
+import os
 import struct
 import win32api
 from functools import reduce
@@ -151,7 +152,10 @@ class EverythingError(BaseException):
 
 
 class EverythingTool:
-    def __init__(self, dll_path='./dll/Everything64.dll'):
+    def __init__(self, dll_path=''):
+        if not dll_path:
+            dir_path = os.path.abspath(os.path.dirname(__file__))
+            dll_path = os.path.join(dir_path, 'dll', 'Everything64.dll')
         self.dll_path = dll_path
         self.process_name = 'Everything.exe'
         self.dll = None
@@ -457,7 +461,7 @@ class EverythingTool:
         elif isinstance(flags, Iterable):
             return reduce(lambda x, y: x | y, flags), list(flags)
         else:
-            raise AttributeError('arg flags must be int/list')
+            raise AttributeError('arg flags must be int/Iterable[int]')
 
     def search(
             self,
