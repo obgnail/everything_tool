@@ -14,119 +14,117 @@ from functools import reduce
 from typing import List, Iterable, Dict
 
 # defines flag
-EVERYTHING_REQUEST_FILE_NAME = 0x00000001  # 文件名
-EVERYTHING_REQUEST_PATH = 0x00000002  # 不含文件的路径
-EVERYTHING_REQUEST_FULL_PATH_AND_FILE_NAME = 0x00000004  # 包含文件名的路径
-EVERYTHING_REQUEST_EXTENSION = 0x00000008  # 拓展名
-EVERYTHING_REQUEST_SIZE = 0x00000010  # 大小(字节)
-EVERYTHING_REQUEST_DATE_CREATED = 0x00000020  # 创建时间
-EVERYTHING_REQUEST_DATE_MODIFIED = 0x00000040  # 修改时间
-EVERYTHING_REQUEST_DATE_ACCESSED = 0x00000080  # 访问时间
-EVERYTHING_REQUEST_ATTRIBUTES = 0x00000100  # 属性
-EVERYTHING_REQUEST_FILE_LIST_FILE_NAME = 0x00000200  # 文件列表名
-EVERYTHING_REQUEST_RUN_COUNT = 0x00000400  # 运行次数
-EVERYTHING_REQUEST_DATE_RUN = 0x00000800  # 最近打开时间
-EVERYTHING_REQUEST_DATE_RECENTLY_CHANGED = 0x00001000  # 最近修改时间
-EVERYTHING_REQUEST_HIGHLIGHTED_FILE_NAME = 0x00002000  # 文件名(高亮关键字)
-EVERYTHING_REQUEST_HIGHLIGHTED_PATH = 0x00004000  # 不含文件的路径(高亮关键字)
-EVERYTHING_REQUEST_HIGHLIGHTED_FULL_PATH_AND_FILE_NAME = 0x00008000  # 包含文件名的路径(高亮关键字)
+REQUEST_FILE_NAME = 0x00000001
+REQUEST_PATH = 0x00000002
+REQUEST_FULL_PATH_AND_FILE_NAME = 0x00000004
+REQUEST_EXTENSION = 0x00000008
+REQUEST_SIZE = 0x00000010
+REQUEST_DATE_CREATED = 0x00000020
+REQUEST_DATE_MODIFIED = 0x00000040
+REQUEST_DATE_ACCESSED = 0x00000080
+REQUEST_ATTRIBUTES = 0x00000100
+REQUEST_FILE_LIST_FILE_NAME = 0x00000200
+REQUEST_RUN_COUNT = 0x00000400
+REQUEST_DATE_RUN = 0x00000800
+REQUEST_DATE_RECENTLY_CHANGED = 0x00001000
+REQUEST_HIGHLIGHTED_FILE_NAME = 0x00002000
+REQUEST_HIGHLIGHTED_PATH = 0x00004000
+REQUEST_HIGHLIGHTED_FULL_PATH_AND_FILE_NAME = 0x00008000
 
-# 属性
 # see more: https://learn.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants
-EVERYTHING_FILE_ATTRIBUTE_READONLY = 0x00000001
-EVERYTHING_FILE_ATTRIBUTE_HIDDEN = 0x00000002
-EVERYTHING_FILE_ATTRIBUTE_SYSTEM = 0x00000004
-EVERYTHING_FILE_ATTRIBUTE_DIRECTORY = 0x00000010
-EVERYTHING_FILE_ATTRIBUTE_ARCHIVE = 0x00000020
-EVERYTHING_FILE_ATTRIBUTE_DEVICE = 0x00000040
-EVERYTHING_FILE_ATTRIBUTE_NORMAL = 0x00000080
-EVERYTHING_FILE_ATTRIBUTE_TEMPORARY = 0x00000100
-EVERYTHING_FILE_ATTRIBUTE_SPARSE_FILE = 0x00000200
-EVERYTHING_FILE_ATTRIBUTE_REPARSE_POINT = 0x00000400
-EVERYTHING_FILE_ATTRIBUTE_COMPRESSED = 0x00000800
-EVERYTHING_FILE_ATTRIBUTE_OFFLINE = 0x00001000
-EVERYTHING_FILE_ATTRIBUTE_NOT_CONTENT_INDEXED = 0x00002000
-EVERYTHING_FILE_ATTRIBUTE_ENCRYPTED = 0x00004000
+FILE_ATTRIBUTE_READONLY = 0x00000001
+FILE_ATTRIBUTE_HIDDEN = 0x00000002
+FILE_ATTRIBUTE_SYSTEM = 0x00000004
+FILE_ATTRIBUTE_DIRECTORY = 0x00000010
+FILE_ATTRIBUTE_ARCHIVE = 0x00000020
+FILE_ATTRIBUTE_DEVICE = 0x00000040
+FILE_ATTRIBUTE_NORMAL = 0x00000080
+FILE_ATTRIBUTE_TEMPORARY = 0x00000100
+FILE_ATTRIBUTE_SPARSE_FILE = 0x00000200
+FILE_ATTRIBUTE_REPARSE_POINT = 0x00000400
+FILE_ATTRIBUTE_COMPRESSED = 0x00000800
+FILE_ATTRIBUTE_OFFLINE = 0x00001000
+FILE_ATTRIBUTE_NOT_CONTENT_INDEXED = 0x00002000
+FILE_ATTRIBUTE_ENCRYPTED = 0x00004000
 
-# 排序状态映射
-EVERYTHING_SORT_NAME_ASCENDING = 1
-EVERYTHING_SORT_NAME_DESCENDING = 2
-EVERYTHING_SORT_PATH_ASCENDING = 3
-EVERYTHING_SORT_PATH_DESCENDING = 4
-EVERYTHING_SORT_SIZE_ASCENDING = 5
-EVERYTHING_SORT_SIZE_DESCENDING = 6
-EVERYTHING_SORT_EXTENSION_ASCENDING = 7
-EVERYTHING_SORT_EXTENSION_DESCENDING = 8
-EVERYTHING_SORT_TYPE_NAME_ASCENDING = 9
-EVERYTHING_SORT_TYPE_NAME_DESCENDING = 10
-EVERYTHING_SORT_DATE_CREATED_ASCENDING = 11
-EVERYTHING_SORT_DATE_CREATED_DESCENDING = 12
-EVERYTHING_SORT_DATE_MODIFIED_ASCENDING = 13
-EVERYTHING_SORT_DATE_MODIFIED_DESCENDING = 14
-EVERYTHING_SORT_ATTRIBUTES_ASCENDING = 15
-EVERYTHING_SORT_ATTRIBUTES_DESCENDING = 16
-EVERYTHING_SORT_FILE_LIST_FILENAME_ASCENDING = 17
-EVERYTHING_SORT_FILE_LIST_FILENAME_DESCENDING = 18
-EVERYTHING_SORT_RUN_COUNT_ASCENDING = 19
-EVERYTHING_SORT_RUN_COUNT_DESCENDING = 20
-EVERYTHING_SORT_DATE_RECENTLY_CHANGED_ASCENDING = 21
-EVERYTHING_SORT_DATE_RECENTLY_CHANGED_DESCENDING = 22
-EVERYTHING_SORT_DATE_ACCESSED_ASCENDING = 23
-EVERYTHING_SORT_DATE_ACCESSED_DESCENDING = 24
-EVERYTHING_SORT_DATE_RUN_ASCENDING = 25
-EVERYTHING_SORT_DATE_RUN_DESCENDING = 26
+SORT_NAME_ASCENDING = 1
+SORT_NAME_DESCENDING = 2
+SORT_PATH_ASCENDING = 3
+SORT_PATH_DESCENDING = 4
+SORT_SIZE_ASCENDING = 5
+SORT_SIZE_DESCENDING = 6
+SORT_EXTENSION_ASCENDING = 7
+SORT_EXTENSION_DESCENDING = 8
+SORT_TYPE_NAME_ASCENDING = 9
+SORT_TYPE_NAME_DESCENDING = 10
+SORT_DATE_CREATED_ASCENDING = 11
+SORT_DATE_CREATED_DESCENDING = 12
+SORT_DATE_MODIFIED_ASCENDING = 13
+SORT_DATE_MODIFIED_DESCENDING = 14
+SORT_ATTRIBUTES_ASCENDING = 15
+SORT_ATTRIBUTES_DESCENDING = 16
+SORT_FILE_LIST_FILENAME_ASCENDING = 17
+SORT_FILE_LIST_FILENAME_DESCENDING = 18
+SORT_RUN_COUNT_ASCENDING = 19
+SORT_RUN_COUNT_DESCENDING = 20
+SORT_DATE_RECENTLY_CHANGED_ASCENDING = 21
+SORT_DATE_RECENTLY_CHANGED_DESCENDING = 22
+SORT_DATE_ACCESSED_ASCENDING = 23
+SORT_DATE_ACCESSED_DESCENDING = 24
+SORT_DATE_RUN_ASCENDING = 25
+SORT_DATE_RUN_DESCENDING = 26
 
 # return values from Everything_GetLastError
-EVERYTHING_OK = 0  # no error
-EVERYTHING_ERROR_MEMORY = 1  # out of memory
-EVERYTHING_ERROR_IPC = 2  # IPC not available
-EVERYTHING_ERROR_REGISTERCLASSEX = 3  # RegisterClassEx failed
-EVERYTHING_ERROR_CREATEWINDOW = 4  # CreateWindow failed
-EVERYTHING_ERROR_CREATETHREAD = 5  # CreateThread failed
-EVERYTHING_ERROR_INVALIDINDEX = 6  # Invalid result index (must be >= 0 and < numResults)
-EVERYTHING_ERROR_INVALIDCALL = 7  # Call Everything_Query before getting results
+OK = 0  # no error
+ERROR_MEMORY = 1  # out of memory
+ERROR_IPC = 2  # IPC not available
+ERROR_REGISTERCLASSEX = 3  # RegisterClassEx failed
+ERROR_CREATEWINDOW = 4  # CreateWindow failed
+ERROR_CREATETHREAD = 5  # CreateThread failed
+ERROR_INVALIDINDEX = 6  # Invalid result index (must be >= 0 and < numResults)
+ERROR_INVALIDCALL = 7  # Call Everything_Query before getting results
 
 # see more: https://en.wikipedia.org/wiki/File_attribute
 _ATTRIBUTES = (
-    (EVERYTHING_FILE_ATTRIBUTE_ENCRYPTED, 'E'),
-    (EVERYTHING_FILE_ATTRIBUTE_NOT_CONTENT_INDEXED, 'I'),
-    (EVERYTHING_FILE_ATTRIBUTE_OFFLINE, 'O'),
-    (EVERYTHING_FILE_ATTRIBUTE_COMPRESSED, 'C'),
-    (EVERYTHING_FILE_ATTRIBUTE_REPARSE_POINT, 'L'),
-    (EVERYTHING_FILE_ATTRIBUTE_SPARSE_FILE, 'P'),
-    (EVERYTHING_FILE_ATTRIBUTE_TEMPORARY, 'T'),
-    (EVERYTHING_FILE_ATTRIBUTE_NORMAL, 'N'),
-    (EVERYTHING_FILE_ATTRIBUTE_DEVICE, 'D'),
-    (EVERYTHING_FILE_ATTRIBUTE_ARCHIVE, 'A'),
-    (EVERYTHING_FILE_ATTRIBUTE_DIRECTORY, 'D'),
-    (EVERYTHING_FILE_ATTRIBUTE_SYSTEM, 'S'),
-    (EVERYTHING_FILE_ATTRIBUTE_HIDDEN, 'H'),
-    (EVERYTHING_FILE_ATTRIBUTE_READONLY, 'R'),
+    (FILE_ATTRIBUTE_ENCRYPTED, 'E'),
+    (FILE_ATTRIBUTE_NOT_CONTENT_INDEXED, 'I'),
+    (FILE_ATTRIBUTE_OFFLINE, 'O'),
+    (FILE_ATTRIBUTE_COMPRESSED, 'C'),
+    (FILE_ATTRIBUTE_REPARSE_POINT, 'L'),
+    (FILE_ATTRIBUTE_SPARSE_FILE, 'P'),
+    (FILE_ATTRIBUTE_TEMPORARY, 'T'),
+    (FILE_ATTRIBUTE_NORMAL, 'N'),
+    (FILE_ATTRIBUTE_DEVICE, 'D'),
+    (FILE_ATTRIBUTE_ARCHIVE, 'A'),
+    (FILE_ATTRIBUTE_DIRECTORY, 'D'),
+    (FILE_ATTRIBUTE_SYSTEM, 'S'),
+    (FILE_ATTRIBUTE_HIDDEN, 'H'),
+    (FILE_ATTRIBUTE_READONLY, 'R'),
 )
 
 _SUPPORTED_FLAGS = (
-    EVERYTHING_REQUEST_HIGHLIGHTED_FULL_PATH_AND_FILE_NAME,
-    EVERYTHING_REQUEST_HIGHLIGHTED_PATH,
-    EVERYTHING_REQUEST_HIGHLIGHTED_FILE_NAME,
-    EVERYTHING_REQUEST_DATE_RECENTLY_CHANGED,
-    EVERYTHING_REQUEST_DATE_RUN,
-    EVERYTHING_REQUEST_RUN_COUNT,
-    EVERYTHING_REQUEST_FILE_LIST_FILE_NAME,
-    EVERYTHING_REQUEST_ATTRIBUTES,
-    EVERYTHING_REQUEST_DATE_ACCESSED,
-    EVERYTHING_REQUEST_DATE_MODIFIED,
-    EVERYTHING_REQUEST_DATE_CREATED,
-    EVERYTHING_REQUEST_SIZE,
-    EVERYTHING_REQUEST_EXTENSION,
-    EVERYTHING_REQUEST_FULL_PATH_AND_FILE_NAME,
-    EVERYTHING_REQUEST_PATH,
-    EVERYTHING_REQUEST_FILE_NAME
+    REQUEST_HIGHLIGHTED_FULL_PATH_AND_FILE_NAME,
+    REQUEST_HIGHLIGHTED_PATH,
+    REQUEST_HIGHLIGHTED_FILE_NAME,
+    REQUEST_DATE_RECENTLY_CHANGED,
+    REQUEST_DATE_RUN,
+    REQUEST_RUN_COUNT,
+    REQUEST_FILE_LIST_FILE_NAME,
+    REQUEST_ATTRIBUTES,
+    REQUEST_DATE_ACCESSED,
+    REQUEST_DATE_MODIFIED,
+    REQUEST_DATE_CREATED,
+    REQUEST_SIZE,
+    REQUEST_EXTENSION,
+    REQUEST_FULL_PATH_AND_FILE_NAME,
+    REQUEST_PATH,
+    REQUEST_FILE_NAME
 )
 
 DEFAULT_FLAGS: int = (
-        EVERYTHING_REQUEST_FULL_PATH_AND_FILE_NAME
-        | EVERYTHING_REQUEST_SIZE
-        | EVERYTHING_REQUEST_DATE_MODIFIED
+        REQUEST_FULL_PATH_AND_FILE_NAME
+        | REQUEST_SIZE
+        | REQUEST_DATE_MODIFIED
 )
 
 ALL_FLAGS: int = reduce(lambda x, y: x | y, _SUPPORTED_FLAGS)
@@ -140,7 +138,7 @@ EPOCH_DIFF = (POSIX_EPOCH - WINDOWS_EPOCH).total_seconds()  # 11644473600.0
 WINDOWS_TICKS_TO_POSIX_EPOCH = EPOCH_DIFF * WINDOWS_TICKS  # 116444736000000000.0
 
 
-class EverythingError(BaseException):
+class Error(BaseException):
     def __init__(self, error_info):
         super().__init__(self)
         self.error_info = error_info
@@ -151,7 +149,7 @@ class EverythingError(BaseException):
     __repr__ = __str__
 
 
-class EverythingTool:
+class Client:
     def __init__(self, dll_path=''):
         if not dll_path:
             dir_path = os.path.abspath(os.path.dirname(__file__))
@@ -159,7 +157,7 @@ class EverythingTool:
         self.dll_path = dll_path
         self.process_name = 'Everything.exe'
         self.dll = None
-        self.error: [EverythingError, None] = None
+        self.error: [Error, None] = None
         self.buffers: Dict = {}
         self.flag_func_map: Dict = {}
 
@@ -297,13 +295,13 @@ class EverythingTool:
         self.dll.Everything_GetResultAttributes.argtypes = [ctypes.c_int]
         self.dll.Everything_GetResultAttributes.restype = ctypes.POINTER(ctypes.c_ulonglong)
 
-    def _setup(self, keywords, math_path, math_case, whole_world,
+    def _setup(self, keywords, math_path, math_case, whole_word,
                regex, offset, limit, flags, sort) -> None:
-        self.dll.Everything_Reset()  # 重置状态
+        self.dll.Everything_Reset()
         self.dll.Everything_SetSearchW(keywords)
         self.dll.Everything_SetMatchPath(math_path)
         self.dll.Everything_SetMatchCase(math_case)
-        self.dll.Everything_SetMatchWholeWord(whole_world)
+        self.dll.Everything_SetMatchWholeWord(whole_word)
         self.dll.Everything_SetRegex(regex)
         self.dll.Everything_SetRequestFlags(flags)
         self.dll.Everything_SetSort(sort)
@@ -431,29 +429,29 @@ class EverythingTool:
         version_string = f'{major_version}.{minor_version}.{revision}.{build_number}'
         return version_string
 
-    def get_last_error(self) -> [EverythingError, None]:
+    def get_last_error(self) -> [Error, None]:
         error = self.dll.Everything_GetLastError()
 
-        if error == EVERYTHING_OK:
+        if error == OK:
             return None
-        elif error == EVERYTHING_ERROR_MEMORY:
+        elif error == ERROR_MEMORY:
             error_info = "out of memory"
-        elif error == EVERYTHING_ERROR_IPC:
+        elif error == ERROR_IPC:
             error_info = "IPC not available"
-        elif error == EVERYTHING_ERROR_REGISTERCLASSEX:
+        elif error == ERROR_REGISTERCLASSEX:
             error_info = "register classEx failed"
-        elif error == EVERYTHING_ERROR_CREATEWINDOW:
+        elif error == ERROR_CREATEWINDOW:
             error_info = "create window failed"
-        elif error == EVERYTHING_ERROR_CREATETHREAD:
+        elif error == ERROR_CREATETHREAD:
             error_info = "create thread failed"
-        elif error == EVERYTHING_ERROR_INVALIDINDEX:
+        elif error == ERROR_INVALIDINDEX:
             error_info = "invalid result index (must be >= 0 and < numResults)"
-        elif error == EVERYTHING_ERROR_INVALIDCALL:
+        elif error == ERROR_INVALIDCALL:
             error_info = "call everything query before getting results"
         else:
-            error_info = 'unknown error'
+            error_info = "unknown error"
 
-        return EverythingError(error_info)
+        return Error(error_info)
 
     def _flags_adapter(self, flags: [int, Iterable[int]]) -> [int, list[int]]:
         if isinstance(flags, int):
@@ -468,29 +466,29 @@ class EverythingTool:
             keywords: str,
             math_path: bool = False,
             math_case: bool = False,
-            whole_world: bool = False,
+            whole_word: bool = False,
             regex: bool = False,
             offset: int = 0,
             limit: int = -1,
             flags: [int, Iterable[int]] = DEFAULT_FLAGS,
-            sort: int = EVERYTHING_SORT_NAME_ASCENDING
+            sort: int = SORT_NAME_ASCENDING
     ) -> Iterable[Dict]:
         """
-        everything搜索文件
-        :param keywords: 搜索关键字,支持所有everything搜索语法
-        :param math_path: 匹配路径
-        :param math_case: 区分大小写
-        :param whole_world: 全字匹配
-        :param regex: 使用正则表达式
-        :param offset: 偏移量
-        :param limit: 最大数目,<0则查询所有
-        :param flags: 查询字段
-        :param sort: 排序
-        :return: 记录字典的生成器
+        Search files using Everything
+        :param keywords: Search keyword, supports all Everything search syntax
+        :param math_path: Match path
+        :param math_case: Case sensitive
+        :param whole_word: Whole word match
+        :param regex: Use regular expression
+        :param offset: Offset
+        :param limit: Maximum number, <0 means search all
+        :param flags: Query fields
+        :param sort: Sort order
+        :return: Generator of record dictionaries
         """
 
         flag_num, flag_list = self._flags_adapter(flags)
-        self._setup(keywords, math_path, math_case, whole_world, regex, offset, limit, flag_num, sort)
+        self._setup(keywords, math_path, math_case, whole_word, regex, offset, limit, flag_num, sort)
         result_num = self._execute_search()
 
         for idx in range(result_num):
@@ -503,55 +501,54 @@ class EverythingTool:
             yield data
 
     def search_in_located(self, path: str, keywords='', **kwargs):
-        """搜索路径下文件"""
+        """Search files in a specific path"""
         return self.search(f'{path} {keywords}', **kwargs)
 
     def search_folder(self, keywords='', **kwargs):
-        """搜索文件夹"""
+        """Search folders"""
         return self.search(f'folder: {keywords}', **kwargs)
 
     def search_ext(self, ext: [str, Iterable[str]], keywords='', **kwargs):
-        """搜索扩展名称"""
+        """Search by file extension"""
         if isinstance(ext, Iterable):
             ext = ';'.join(ext)
         ext = ext.replace('.', '')
         return self.search(f'ext:{ext} {keywords}', **kwargs)
 
     def search_audio(self, keywords='', **kwargs):
-        """搜索音频文件"""
+        """Search audio files"""
         return self.search_ext(f'{self.audio_ext} {keywords}', **kwargs)
 
     def search_compressed(self, keywords='', **kwargs):
-        """搜索压缩文件"""
+        """Search compressed files"""
         return self.search_ext(f'{self.compressed_ext} {keywords}', **kwargs)
 
     def search_doc(self, keywords='', **kwargs):
-        """搜索文档"""
+        """Search documents"""
         return self.search_ext(f'{self.doc_ext} {keywords}', **kwargs)
 
     def search_exe(self, keywords='', **kwargs):
-        """搜索可执行文件"""
+        """Search executable files"""
         return self.search_ext(f'{self.exe_ext} {keywords}', **kwargs)
 
     def search_pic(self, keywords='', **kwargs):
-        """搜索图片"""
+        """Search image files"""
         return self.search_ext(f'{self.pic_ext} {keywords}', **kwargs)
 
     def search_video(self, keywords='', **kwargs):
-        """搜索视频"""
+        """Search video files"""
         return self.search_ext(f'{self.video_ext} {keywords}', **kwargs)
 
     def exit(self) -> None:
-        """退出everything"""
+        """exit everything"""
         self.dll.Everything_Exit()
 
 
 if __name__ == '__main__':
     try:
-        with EverythingTool() as tool:
-            print("everything version:\t", tool.version())
-
-            result = tool.search("*.zip")
+        with Client() as client:
+            print("everything version:\t", client.version())
+            result = client.search("*.zip")
             print("*.zip:\t", len(list(result)))
-    except (AttributeError, EverythingError) as e:
+    except (AttributeError, Error) as e:
         print(e)
