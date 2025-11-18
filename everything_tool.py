@@ -7,12 +7,11 @@ dependency (SDK): https://www.voidtools.com/Everything-SDK.zip
 """
 import ctypes
 import datetime
-import struct
-import win32api
+from ctypes import wintypes
 from dataclasses import dataclass
 from enum import IntEnum, IntFlag
 from pathlib import Path
-from typing import Dict, Iterable, Iterator
+from typing import Dict, Iterable, Iterator, Final, Callable, Tuple, Optional
 
 WINDOWS_TICKS = 10_000_000  # 100 nanoseconds
 WINDOWS_EPOCH = datetime.datetime(1601, 1, 1)
@@ -20,7 +19,7 @@ POSIX_EPOCH = datetime.datetime(1970, 1, 1)
 EPOCH_DIFFERENCE_S = (POSIX_EPOCH - WINDOWS_EPOCH).total_seconds()
 WINDOWS_TICKS_TO_POSIX_EPOCH = EPOCH_DIFFERENCE_S * WINDOWS_TICKS
 INVALID_FILETIME = 2 ** 64 - 1
-MAX_PATH = 260
+MAX_PATH = 4096
 
 
 class Request(IntFlag):
@@ -69,7 +68,7 @@ class FileAttribute(IntFlag):
     ENCRYPTED = 0x00004000
 
 
-ATTRIBUTE_MAP = {
+ATTRIBUTE_MAP: Final[Dict[FileAttribute, str]] = {
     FileAttribute.READONLY: 'R',
     FileAttribute.HIDDEN: 'H',
     FileAttribute.SYSTEM: 'S',
@@ -86,7 +85,7 @@ ATTRIBUTE_MAP = {
     FileAttribute.ENCRYPTED: 'E',
 }
 
-FileTypeGroups = {
+FILE_TYPE_GROUPS: Final[Dict[str, frozenset[str]]] = {
     'AUDIO': frozenset({'m1a', 'dts', 'fla', 'mp3', 'xm', 'm2a', 'voc', 'cda', 'spc', 'snd', 'ac3', 'umx', 'mka',
                         'midi', 'wma', 'm3u', 'mod', 'mid', 'wav', 'aac', 'mpa', 'it', 'ogg', 'rmi', 'aif', 'mp2',
                         'm4a', 'ra', 'aiff', 'au', 'flac', 'aifc'}),
@@ -162,33 +161,33 @@ class SDKError(Exception):
         super().__init__(f"[{self.error_code.name}] {self.message}")
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SearchResult:
     """A structured, read-only object for a single search result."""
-    full_path: str | None = None
-    path: str | None = None
-    name: str | None = None
-    extension: str | None = None
-    size: int | None = None
-    created_time: datetime.datetime | None = None
-    modified_time: datetime.datetime | None = None
-    accessed_time: datetime.datetime | None = None
-    attributes: str | None = None
-    run_count: int | None = None
-    date_run: datetime.datetime | None = None
-    recently_changed: datetime.datetime | None = None
-    highlighted_full_path: str | None = None
-    highlighted_path: str | None = None
-    highlighted_name: str | None = None
-    file_list_file_name: str | None = None
+    full_path: Optional[str] = None
+    path: Optional[str] = None
+    name: Optional[str] = None
+    extension: Optional[str] = None
+    size: Optional[int] = None
+    created_time: Optional[datetime.datetime] = None
+    modified_time: Optional[datetime.datetime] = None
+    accessed_time: Optional[datetime.datetime] = None
+    attributes: Optional[str] = None
+    run_count: Optional[int] = None
+    date_run: Optional[datetime.datetime] = None
+    recently_changed: Optional[datetime.datetime] = None
+    highlighted_full_path: Optional[str] = None
+    highlighted_path: Optional[str] = None
+    highlighted_name: Optional[str] = None
+    file_list_file_name: Optional[str] = None
 
 
 class Client:
-    def __init__(self, dll_path: str | Path | None = None):
+    def __init__(self, dll_path: Optional[str | Path] = None):
         self.dll_path = str(dll_path or self._get_default_dll_path())
-        self.dll: ctypes.WinDLL | None = None
+        self.dll: Optional[ctypes.WinDLL] = None
         self._buffers: Dict[str, ctypes._SimpleCData] = {}
-        self._request_func_map: Dict[Request, tuple[str, callable]] = {}
+        self._request_func_map: Dict[Request, Tuple[str, Callable]] = {}
 
     @property
     def is_connected(self) -> bool:
@@ -204,14 +203,17 @@ class Client:
         except FileNotFoundError as err:
             raise FileNotFoundError(f"Could not find the Everything DLL at '{self.dll_path}'. "
                                     f"Please ensure the SDK is downloaded and the path is correct.") from err
+        except OSError as err:
+            raise OSError(f"Failed to load DLL from '{self.dll_path}'. "
+                          f"Ensure it's a valid DLL and matches your Python architecture.") from err
         self._initialize_sdk()
 
     def close(self) -> None:
         """Unloads the Everything DLL. Does nothing if not connected."""
         if not self.is_connected:
             return
-        if self.dll and self.dll._handle:
-            win32api.FreeLibrary(self.dll._handle)
+        if self.dll and hasattr(self.dll, "_handle"):
+            ctypes.windll.kernel32.FreeLibrary(self.dll._handle)
         self.dll = None
 
     def __enter__(self):
@@ -229,20 +231,24 @@ class Client:
         return Path(__file__).parent / "dll" / "Everything64.dll"
 
     @staticmethod
-    def _filetime_to_datetime(filetime: ctypes.c_ulonglong) -> datetime.datetime | None:
+    def _filetime_to_datetime(filetime: ctypes.c_ulonglong) -> Optional[datetime.datetime]:
         """Converts a Windows FILETIME structure to a Python datetime object."""
-        win_ticks = struct.unpack('<Q', filetime)[0]
+        win_ticks = filetime.value
         if win_ticks == 0 or win_ticks == INVALID_FILETIME:
             return None
-        posix_timestamp = (win_ticks - WINDOWS_TICKS_TO_POSIX_EPOCH) / WINDOWS_TICKS
-        return datetime.datetime.fromtimestamp(posix_timestamp)
+        try:
+            posix_timestamp = (win_ticks - WINDOWS_TICKS_TO_POSIX_EPOCH) / WINDOWS_TICKS
+            return datetime.datetime.fromtimestamp(posix_timestamp)
+        except (OSError, ValueError):
+            return None
 
     def _ensure_connected(self):
-        if not self.is_connected:
+        if not self.is_connected or not self.dll:
             raise RuntimeError("Client is not connected. Please call connect() or use a 'with' statement.")
 
     def _check_for_errors(self):
         """Centralized error checking to be called after critical operations."""
+        self._ensure_connected()
         error_code_val = self.dll.Everything_GetLastError()
         if error_code_val != EverythingError.OK:
             raise SDKError(EverythingError(error_code_val))
@@ -290,47 +296,90 @@ class Client:
 
     def _define_ctypes(self) -> None:
         """Define argument and return types for the DLL functions."""
-        idx_int = ctypes.c_int
-        pointer_ulonglong = ctypes.POINTER(ctypes.c_ulonglong)
-        func_return_strings = [
-            "Everything_GetResultExtensionW", "Everything_GetResultFileNameW",
-            "Everything_GetResultPathW", "Everything_GetResultHighlightedFileNameW",
-            "Everything_GetResultHighlightedPathW", "Everything_GetResultHighlightedFullPathAndFileNameW",
-            "Everything_GetResultFileListFileNameW",
-        ]
-        func_return_pointers = [
-            "Everything_GetResultDateCreated", "Everything_GetResultDateModified",
-            "Everything_GetResultDateAccessed", "Everything_GetResultSize",
-            "Everything_GetResultDateRecentlyChanged", "Everything_GetResultDateRun",
-        ]
+        if not self.dll:
+            return
 
-        for func_name in func_return_strings:
-            func = getattr(self.dll, func_name)
-            func.argtypes = [idx_int]
-            func.restype = ctypes.c_wchar_p
+        BOOL = wintypes.BOOL
+        DWORD = wintypes.DWORD
+        LPCWSTR = wintypes.LPCWSTR
+        LPWSTR = wintypes.LPWSTR
+        HMODULE = wintypes.HMODULE
+        P_ULL = ctypes.POINTER(ctypes.c_ulonglong)
 
-        for func_name in func_return_pointers:
-            func = getattr(self.dll, func_name)
-            func.argtypes = [idx_int, pointer_ulonglong]
+        signatures = (
+            # Get String Results (Index -> String Pointer)
+            ([DWORD], LPCWSTR, [
+                "Everything_GetResultExtensionW", "Everything_GetResultFileNameW",
+                "Everything_GetResultPathW", "Everything_GetResultHighlightedFileNameW",
+                "Everything_GetResultHighlightedPathW", "Everything_GetResultHighlightedFullPathAndFileNameW",
+                "Everything_GetResultFileListFileNameW",
+            ]),
+            # Get Integer Results (Index -> Int)
+            ([DWORD], DWORD, ["Everything_GetResultRunCount", "Everything_GetResultAttributes"]),
+            # Get Numeric/Time Data (Index, Output Pointer -> Void)
+            ([DWORD, P_ULL], None, [
+                "Everything_GetResultDateCreated", "Everything_GetResultDateModified",
+                "Everything_GetResultDateAccessed", "Everything_GetResultSize",
+                "Everything_GetResultDateRecentlyChanged", "Everything_GetResultDateRun",
+            ]),
+            # Set Boolean Options (Bool -> Void)
+            ([BOOL], None, [
+                "Everything_SetMatchPath", "Everything_SetMatchCase",
+                "Everything_SetMatchWholeWord", "Everything_SetRegex",
+            ]),
+            # Set Numeric Options (Int -> Void)
+            ([DWORD], None, [
+                "Everything_SetRequestFlags", "Everything_SetSort",
+                "Everything_SetOffset", "Everything_SetMax",
+            ]),
+            # Get Global State/Versions (Void -> Int)
+            ([], DWORD, [
+                "Everything_GetMajorVersion", "Everything_GetMinorVersion",
+                "Everything_GetRevision", "Everything_GetBuildNumber",
+                "Everything_GetLastError", "Everything_GetNumResults",
+            ]),
+            # Set Search String (String -> Void)
+            ([LPCWSTR], None, ["Everything_SetSearchW"]),
+            # Void Actions (Void -> Void)
+            ([], None, ["Everything_Reset", "Everything_Exit"]),
+            # Check DB Status (Void -> Bool)
+            ([], BOOL, ["Everything_IsDBLoaded"]),
+            # Execute Query (Bool -> Bool)
+            ([BOOL], BOOL, ["Everything_QueryW"]),
+            # Get Full Path into Buffer (Index, Buffer, Size -> Void)
+            ([DWORD, LPWSTR, DWORD], None, ["Everything_GetResultFullPathNameW"]),
+        )
 
-        self.dll.Everything_IsDBLoaded.restype = ctypes.c_bool
+        for arg_types, res_type, func_names in signatures:
+            for func_name in func_names:
+                func = getattr(self.dll, func_name, None)
+                if func:
+                    func.argtypes = arg_types
+                    func.restype = res_type
 
-        self.dll.Everything_GetResultRunCount.argtypes = [idx_int]
-        self.dll.Everything_GetResultRunCount.restype = ctypes.c_int
+        if hasattr(ctypes, "windll") and hasattr(ctypes.windll, "kernel32"):
+            try:
+                lib = ctypes.windll.kernel32.FreeLibrary
+                lib.argtypes = [HMODULE]
+                lib.restype = BOOL
+            except AttributeError:
+                pass
 
-        self.dll.Everything_GetResultAttributes.argtypes = [idx_int]
-        self.dll.Everything_GetResultAttributes.restype = ctypes.c_ulong
-
-    def _setup_query(self, keywords, match_path, match_case, whole_word, regex, offset, limit, flags, sort) -> None:
+    def _setup_query(
+            self, keywords: str, match_path: bool, match_case: bool,
+            whole_word: bool, regex: bool, offset: int, limit: int,
+            flags: Request, sort: Sort
+    ) -> None:
         """Sets all query parameters before execution."""
+        self._ensure_connected()
         self.dll.Everything_Reset()
         self.dll.Everything_SetSearchW(keywords)
         self.dll.Everything_SetMatchPath(match_path)
         self.dll.Everything_SetMatchCase(match_case)
         self.dll.Everything_SetMatchWholeWord(whole_word)
         self.dll.Everything_SetRegex(regex)
-        self.dll.Everything_SetRequestFlags(flags)
-        self.dll.Everything_SetSort(sort)
+        self.dll.Everything_SetRequestFlags(flags.value)
+        self.dll.Everything_SetSort(sort.value)
         if offset > 0:
             self.dll.Everything_SetOffset(offset)
         if limit >= 0:
@@ -364,32 +413,37 @@ class Client:
             return ""
 
         attr_flags = FileAttribute(attr_int)
-        return "".join(sorted(ATTRIBUTE_MAP[flag] for flag in ATTRIBUTE_MAP if flag in attr_flags))
+        chars = [
+            ATTRIBUTE_MAP[flag]
+            for flag in attr_flags
+            if flag in ATTRIBUTE_MAP
+        ]
+        return "".join(sorted(chars))
 
     def _get_file_list_file_name(self, idx: int) -> str:
         return self.dll.Everything_GetResultFileListFileNameW(idx)
 
-    def _get_accessed_time(self, idx: int) -> datetime.datetime | None:
+    def _get_accessed_time(self, idx: int) -> Optional[datetime.datetime]:
         buffer = self._buffers['accessed_time']
         self.dll.Everything_GetResultDateAccessed(idx, buffer)
         return self._filetime_to_datetime(buffer)
 
-    def _get_created_time(self, idx: int) -> datetime.datetime | None:
+    def _get_created_time(self, idx: int) -> Optional[datetime.datetime]:
         buffer = self._buffers['created_time']
         self.dll.Everything_GetResultDateCreated(idx, buffer)
         return self._filetime_to_datetime(buffer)
 
-    def _get_modified_time(self, idx: int) -> datetime.datetime | None:
+    def _get_modified_time(self, idx: int) -> Optional[datetime.datetime]:
         buffer = self._buffers['modified_time']
         self.dll.Everything_GetResultDateModified(idx, buffer)
         return self._filetime_to_datetime(buffer)
 
-    def _get_recently_changed(self, idx: int) -> datetime.datetime | None:
+    def _get_recently_changed(self, idx: int) -> Optional[datetime.datetime]:
         buffer = self._buffers['recently_changed']
         self.dll.Everything_GetResultDateRecentlyChanged(idx, buffer)
         return self._filetime_to_datetime(buffer)
 
-    def _get_date_run(self, idx: int) -> datetime.datetime | None:
+    def _get_date_run(self, idx: int) -> Optional[datetime.datetime]:
         buffer = self._buffers['date_run']
         self.dll.Everything_GetResultDateRun(idx, buffer)
         return self._filetime_to_datetime(buffer)
@@ -406,11 +460,12 @@ class Client:
     def version(self) -> str:
         """Returns the version of the Everything instance."""
         self._ensure_connected()
-        major = self.dll.Everything_GetMajorVersion()
-        minor = self.dll.Everything_GetMinorVersion()
-        revision = self.dll.Everything_GetRevision()
-        build = self.dll.Everything_GetBuildNumber()
-        return f"{major}.{minor}.{revision}.{build}"
+        return "{}.{}.{}.{}".format(
+            self.dll.Everything_GetMajorVersion(),
+            self.dll.Everything_GetMinorVersion(),
+            self.dll.Everything_GetRevision(),
+            self.dll.Everything_GetBuildNumber()
+        )
 
     def search(
             self,
@@ -440,7 +495,7 @@ class Client:
         """
         self._ensure_connected()
 
-        self._setup_query(keywords, match_path, match_case, whole_word, regex, offset, limit, flags.value, sort.value)
+        self._setup_query(keywords, match_path, match_case, whole_word, regex, offset, limit, flags, sort)
         query_successful = self.dll.Everything_QueryW(True)
         if not query_successful:
             self._check_for_errors()
@@ -461,6 +516,7 @@ class Client:
         """Requests the Everything service to exit."""
         self._ensure_connected()
         self.dll.Everything_Exit()
+        self.close()
 
     def search_in_located(self, path: str | Path, keywords: str = '', **kwargs) -> Iterator[SearchResult]:
         return self.search(f'path:"{path}" {keywords}', **kwargs)
@@ -476,13 +532,13 @@ class Client:
         return self.search(f'ext:{ext_str} {keywords}', **kwargs)
 
     def search_audio(self, keywords: str = '', **kwargs) -> Iterator[SearchResult]:
-        return self.search_ext(FileTypeGroups['AUDIO'], keywords, **kwargs)
+        return self.search_ext(FILE_TYPE_GROUPS['AUDIO'], keywords, **kwargs)
 
     def search_video(self, keywords: str = '', **kwargs) -> Iterator[SearchResult]:
-        return self.search_ext(FileTypeGroups['VIDEO'], keywords, **kwargs)
+        return self.search_ext(FILE_TYPE_GROUPS['VIDEO'], keywords, **kwargs)
 
     def search_image(self, keywords: str = '', **kwargs) -> Iterator[SearchResult]:
-        return self.search_ext(FileTypeGroups['IMAGE'], keywords, **kwargs)
+        return self.search_ext(FILE_TYPE_GROUPS['IMAGE'], keywords, **kwargs)
 
     def search_doc(self, keywords: str = '', **kwargs) -> Iterator[SearchResult]:
-        return self.search_ext(FileTypeGroups['DOC'], keywords, **kwargs)
+        return self.search_ext(FILE_TYPE_GROUPS['DOC'], keywords, **kwargs)
