@@ -4,7 +4,7 @@
 
 `Everything Tool` 是一个类型安全的 Python SDK，专为与 Windows 平台上的文件搜索软件 `Everything` 互动而设计。它提供了一个清晰的、面向对象的 API，让您能完全发挥 Everything 的即时搜索能力。
 
----
+
 
 ## 环境要求
 
@@ -12,7 +12,7 @@
 
 - **下载 Everything**：您可以从 [官方网站](https://www.voidtools.com/zh-cn/downloads/) 下载。
 
----
+
 
 ## 使用示例
 
@@ -57,7 +57,7 @@ except SDKError as e:
     print(f"发生 SDK 错误: {e}")
 ```
 
----
+
 
 ## 核心特性
 
@@ -67,7 +67,7 @@ except SDKError as e:
 ### 结构化的返回结果 (`SearchResult` 数据类)
 搜索方法会返回一个 `SearchResult` 对象的迭代器。这是一个只读的 `dataclass`，允许您通过属性（例如 `result.full_path`）来访问结果。相比传统的字典，它更为健壮和可预测，并能获得 IDE 的完整自动补全支持。
 
----
+
 
 ## API 概览
 
@@ -100,7 +100,7 @@ def search(
 - `search_image(keywords, **kwargs)`: 搜索常见的图片文件。
 - `search_doc(keywords, **kwargs)`: 搜索常见的文档文件。
 
----
+
 
 ## 参考
 
@@ -154,7 +154,7 @@ def search(
 | `ENCRYPTED`             | 文件被加密。                   |
 | `REPARSE_POINT`         | 文件具有关联的重新分析点。     |
 
----
+
 
 ## 搜索语法
 

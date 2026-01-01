@@ -4,7 +4,7 @@ English | [简体中文](https://github.com/obgnail/everything_tool/blob/master/
 
 `Everything Tool` is a type-safe Python SDK designed to interface with the `Everything` file search software for Windows. It provides a clean, object-oriented API to harness the full power of Everything's instant search capabilities.
 
----
+
 
 ## Requirements
 
@@ -12,7 +12,7 @@ This project uses IPC (Inter-Process Communication) to communicate with `Everyth
 
 - **Download Everything**: You can download it from the [official website](https://www.voidtools.com/en-us/downloads/).
 
----
+
 
 ## Usage Example
 
@@ -57,7 +57,7 @@ except SDKError as e:
     print(f"An SDK error occurred: {e}")
 ```
 
----
+
 
 ## Key Features
 
@@ -67,7 +67,7 @@ Instead of using raw integer constants, the SDK provides `Enum` classes for `Req
 ### Structured Results (`SearchResult` Dataclass)
 The search methods return an iterator of `SearchResult` objects. This is a read-only `dataclass` that provides attribute-style access to results (e.g., `result.full_path`). It offers a more robust and predictable alternative to dictionaries, with full support for IDE autocompletion.
 
----
+
 
 ## API Overview
 
@@ -100,7 +100,7 @@ For common search tasks, you can use these helpful methods:
 - `search_image(keywords, **kwargs)`: Search for common image files.
 - `search_doc(keywords, **kwargs)`: Search for common document files.
 
----
+
 
 ## Reference
 
@@ -154,7 +154,7 @@ These enum members represent Windows file attributes.
 | `ENCRYPTED`             | The file is encrypted.                    |
 | `REPARSE_POINT`         | The file has an associated reparse point. |
 
----
+
 
 ## Search Syntax
 
